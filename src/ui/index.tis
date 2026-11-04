@@ -1394,6 +1394,9 @@ function self.ready() {
     }
     refreshCurrentUser();
     updateTheme();
+    if (handler.using_public_server()) {
+        self.timer(500ms, open_custom_server_dialog);
+    }
 }
 
 function showAbout() {
