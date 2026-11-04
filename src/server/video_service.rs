@@ -711,8 +711,12 @@ fn run(vs: VideoService) -> ResultType<()> {
     }
 
     let mut frame_controller = VideoFrameController::new(display_idx);
+    let mut prev_bgra: Option<Vec<u8>> = None;
+    let mut prev_yuv: Vec<u8> = Vec::new();
+    let mut prev_yuv_key: Option<(scrap::Pixfmt, usize, usize)> = None;
 
     let start = time::Instant::now();
+    let mut last_send = start;
     let mut last_check_displays = time::Instant::now();
     #[cfg(windows)]
     let mut try_gdi = 1;
@@ -744,6 +748,13 @@ fn run(vs: VideoService) -> ResultType<()> {
         capture_height,
     );
     let (mut second_instant, mut send_counter) = (Instant::now(), 0);
+
+    // A blinking caret or a ticking clock touches only a handful of tiles, yet every
+    // encoded message still costs ~120 bytes of framing. At 30 fps that is ~28 kbps of
+    // almost-empty frames, so throttle such changes to 5 fps. The reference frame is
+    // kept at the last *sent* frame, letting skipped changes accumulate into one diff.
+    const SMALL_CHANGE_TILE_DIVISOR: usize = 20; // under 5% of tiles
+    let small_change_min_interval = std::time::Duration::from_millis(200);
 
     while sp.ok() {
         #[cfg(windows)]
@@ -866,12 +877,85 @@ fn run(vs: VideoService) -> ResultType<()> {
                         }
                     }
 
-                    let frame = frame.to(encoder.yuvfmt(), &mut yuv, &mut mid_data)?;
-                    static_refresh.on_frame(&frame);
+                    // Tile-based frame diff. Frames identical to the previous one are
+                    // skipped entirely (zero bytes, zero encode CPU). Frames with only a
+                    // few changed tiles later get every untouched tile restored from the
+                    // previous YUV, so the encoder's inter-frame compressor spends nothing
+                    // on static regions.
+                    let mut diff_mask: Option<scrap::diff::TileMask> = None;
+                    let mut pending_bgra: Option<Vec<u8>> = None;
+                    let mut small_change = false;
+                    let diff_skipped = match (&frame, &prev_bgra) {
+                        (scrap::Frame::PixelBuffer(p), prev_slot)
+                            if p.pixfmt() == scrap::Pixfmt::BGRA =>
+                        {
+                            let cur = bgra_unpadded(p);
+                            let (skipped, mask, small) = match prev_slot {
+                                Some(prev) if !cur.is_empty() && cur.len() == prev.len() => {
+                                    let (result, mask) = scrap::diff::diff_bgra_with_mask(
+                                        &cur,
+                                        prev,
+                                        p.width(),
+                                        p.height(),
+                                    );
+                                    let small =
+                                        result.is_small_change(SMALL_CHANGE_TILE_DIVISOR);
+                                    (result.is_static(), mask, small)
+                                }
+                                _ => (false, None, false),
+                            };
+                            diff_mask = mask;
+                            small_change = small;
+                            // Keep the last *sent* frame as the reference: updating it on
+                            // a skip would let sub-tolerance drift accumulate forever.
+                            if !skipped {
+                                pending_bgra = Some(cur);
+                            }
+                            skipped
+                        }
+                        _ => false,
+                    };
+                    if diff_skipped {
+                        frame_controller.set_send(now, Default::default());
+                        send_counter += 1;
+                        #[cfg(target_os = "linux")]
+                        {
+                            would_block_count = 0;
+                        }
+                        continue;
+                    }
+                    if small_change && last_send.elapsed() < small_change_min_interval {
+                        frame_controller.set_send(now, Default::default());
+                        send_counter += 1;
+                        continue;
+                    }
+
+                    let encode_input = match &frame {
+                        scrap::Frame::PixelBuffer(_) => {
+                            let yuvfmt = encoder.yuvfmt();
+                            let _ = frame.to(yuvfmt.clone(), &mut yuv, &mut mid_data)?;
+                            let key = (yuvfmt.pixfmt, yuvfmt.w, yuvfmt.h);
+                            if prev_yuv_key == Some(key) {
+                                if let Some(mask) = &diff_mask {
+                                    scrap::diff::restore_unchanged_yuv(
+                                        &mut yuv, &prev_yuv, &yuvfmt, mask,
+                                    );
+                                }
+                            }
+                            prev_yuv.resize(yuv.len(), 0);
+                            prev_yuv.copy_from_slice(&yuv);
+                            prev_yuv_key = Some(key);
+                            EncodeInput::YUV(&yuv)
+                        }
+                        scrap::Frame::Texture(_) => {
+                            frame.to(encoder.yuvfmt(), &mut yuv, &mut mid_data)?
+                        }
+                    };
+                    static_refresh.on_frame(&encode_input);
                     let result = handle_one_frame(
                         display_idx,
                         &sp,
-                        frame,
+                        encode_input,
                         ms,
                         &mut encoder,
                         recorder.clone(),
@@ -884,6 +968,10 @@ fn run(vs: VideoService) -> ResultType<()> {
                     static_refresh.on_frame_encoded(&result);
                     frame_controller.set_send(now, result.send_conn_ids);
                     send_counter += 1;
+                    if let Some(cur) = pending_bgra {
+                        prev_bgra = Some(cur);
+                    }
+                    last_send = now;
                 }
                 #[cfg(windows)]
                 {
@@ -1271,6 +1359,23 @@ fn check_privacy_mode_changed(
 fn refresh_allowed(unfed: bool, warmed_up: bool, latency_free: bool) -> bool {
     // Only VideoToolbox has been seen to need this; other platforms keep refreshing as before.
     !cfg!(target_os = "macos") || unfed || warmed_up || latency_free
+}
+
+/// Copy a captured BGRA pixel buffer into a tightly packed buffer (no row
+/// padding), which is what the tile diff compares. Returns an empty buffer
+/// when the source cannot be read as packed BGRA.
+fn bgra_unpadded(p: &scrap::PixelBuffer) -> Vec<u8> {
+    let (w, h) = (p.width(), p.height());
+    let stride = p.stride().first().copied().unwrap_or(0);
+    if w == 0 || h == 0 || stride < w * 4 {
+        return Vec::new();
+    }
+    let data = p.data();
+    let mut out = Vec::with_capacity(w * h * 4);
+    for y in 0..h {
+        out.extend_from_slice(&data[y * stride..y * stride + w * 4]);
+    }
+    out
 }
 
 #[inline]
