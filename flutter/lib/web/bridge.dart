@@ -255,6 +255,13 @@ class RustdeskImpl {
     return Future(() => js.context.callMethod('setByName', ['reconnect']));
   }
 
+  // The Web client owns its own transport and reconnect policy, so the
+  // session-key/buffer bookkeeping this probes does not exist here.
+  bool sessionCanIncrementalReconnectSync(
+      {required UuidValue sessionId, required int bufferSec, dynamic hint}) {
+    return false;
+  }
+
   Future<void> sessionToggleOption(
       {required UuidValue sessionId, required String value, dynamic hint}) {
     return Future(

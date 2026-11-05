@@ -255,15 +255,20 @@ pub fn session_get_remember(session_id: SessionID) -> Option<bool> {
 /// whether to auto-reconnect without showing the disconnect dialog — the
 /// caller only needs a yes/no, the timing logic lives entirely in
 /// `ConnectionRoundState`.
-pub fn session_can_incremental_reconnect(session_id: SessionID, buffer_sec: u64) -> bool {
-    let Some(session) = sessions::get_session_by_session_id(&session_id) else {
-        return false;
-    };
-    session
-        .connection_round_state
-        .lock()
-        .unwrap()
-        .can_incremental_reconnect(buffer_sec)
+pub fn session_can_incremental_reconnect_sync(
+    session_id: SessionID,
+    buffer_sec: u64,
+) -> SyncReturn<bool> {
+    let res = sessions::get_session_by_session_id(&session_id)
+        .map(|session| {
+            session
+                .connection_round_state
+                .lock()
+                .unwrap()
+                .can_incremental_reconnect(buffer_sec)
+        })
+        .unwrap_or(false);
+    SyncReturn(res)
 }
 
 pub fn session_get_toggle_option(session_id: SessionID, arg: String) -> Option<bool> {

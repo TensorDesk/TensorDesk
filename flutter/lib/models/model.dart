@@ -56,6 +56,12 @@ final _constSessionId = Uuid().v4obj();
 // Empirical restart reconnect cadence: keep the last frame briefly and retry quickly.
 const _restartReconnectSilentDelaySecs = 5;
 
+/// Window in which a disconnect is still treated as a transient blip: the
+/// controlled side keeps its service thread (and encoder) alive across a short
+/// drop, so reconnecting with the same session resumes the stream. Beyond this
+/// the reconnect falls back to the normal "Connection Error" dialog.
+const kIncrementalReconnectBufferSec = 30;
+
 class CachedPeerData {
   Map<String, dynamic> updatePrivacyMode = {};
   Map<String, dynamic> peerInfo = {};
@@ -122,6 +128,9 @@ class FfiModel with ChangeNotifier {
   Timer? _restartReconnectDelayTimer;
   var _reconnects = 1;
   DateTime? _offlineReconnectStartTime;
+  /// Number of silent (no-dialog) reconnect attempts tried for the current
+  /// connection blip. Reset when the connection becomes ready again.
+  int _incrementalReconnectAttempts = 0;
   bool _androidDocumentPickerActive = false;
   bool _androidDocumentPickerInterruptedConnection = false;
   bool _viewOnly = false;
@@ -347,6 +356,7 @@ class FfiModel with ChangeNotifier {
         setConnectionType(peerId, evt['secure'] == 'true',
             evt['direct'] == 'true', evt['stream_type'] ?? '');
         resetRestartReconnectState();
+        _incrementalReconnectAttempts = 0;
       } else if (name == 'switch_display') {
         // switch display is kept for backward compatibility
         handleSwitchDisplay(evt, sessionId, peerId);
@@ -966,6 +976,8 @@ class FfiModel with ChangeNotifier {
       final hasRetry = evt['hasRetry'] == 'true';
       showPrivacyFailedDialog(
           sessionId, type, title, text, link, hasRetry, dialogManager);
+    } else if (_tryIncrementalReconnect(type, title, sessionId, dialogManager)) {
+      // Silent network-blip recovery; no dialog shown.
     } else {
       var hasRetry = evt['hasRetry'] == 'true';
       if (!hasRetry) {
@@ -978,6 +990,32 @@ class FfiModel with ChangeNotifier {
   void resetRestartReconnectState() {
     _restartReconnectDelayTimer?.cancel();
     _restartReconnectDelayTimer = null;
+  }
+
+  /// 网络闪断的静默恢复：如果断线发生在最近 [kIncrementalReconnectBufferSec]
+  /// 秒内，被控端的服务与编码器通常还活着，用同一个 session 重连即可续传，
+  /// 不需要弹"连接错误"对话框。最多尝试两次，之后回落到普通对话框流程。
+  bool _tryIncrementalReconnect(
+    String type,
+    String title,
+    SessionID sessionId,
+    OverlayDialogManager dialogManager,
+  ) {
+    if (type != 'error' || title != 'Connection Error') return false;
+    if (parent.target?.closed == true) return false;
+    if (_incrementalReconnectAttempts >= 2) return false;
+    if (!bind.sessionCanIncrementalReconnectSync(
+        sessionId: sessionId, bufferSec: kIncrementalReconnectBufferSec)) {
+      return false;
+    }
+    _incrementalReconnectAttempts++;
+    parent.target?.inputModel.setRelativeMouseMode(false);
+    _cancelPendingMonitorRestore();
+    bind.sessionReconnect(sessionId: sessionId, forceRelay: false);
+    clearPermissions();
+    dialogManager.showLoading(translate('Connecting...'),
+        onCancel: closeConnection);
+    return true;
   }
 
   void beginAndroidDocumentPicker() {
