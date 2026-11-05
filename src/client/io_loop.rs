@@ -1620,8 +1620,10 @@ impl<T: InvokeUiSession> Remote<T> {
             if should_decrease && limited_fps < max_queue_len {
                 auto_fps = limited_fps / 2;
             }
-            if auto_fps < 1 {
-                auto_fps = 1;
+            // 1..=4 means "viewer suspended" on the controlled side, so the automatic
+            // limit must never land there or this viewer stops receiving frames.
+            if auto_fps < 5 {
+                auto_fps = 5;
             }
             if Some(auto_fps) != last_auto_fps {
                 let mut misc = Misc::new();
@@ -3262,6 +3264,43 @@ mod tests {
             let msg = Message::parse_from_bytes(&bytes).unwrap();
             assert_eq!(msg.misc().option().custom_fps, expected);
         }
+    }
+
+    // A slow decoder used to produce an automatic limit of 4, which the controlled
+    // side now reads as "this viewer is suspended" and stops sending frames entirely.
+    #[tokio::test]
+    async fn automatic_fps_never_requests_a_suspended_viewer() {
+        let (mut remote, mut peer, mut far) = remote_and_peer().await;
+        let (video_sender, _video_receiver) = std::sync::mpsc::channel();
+        remote.video_threads.insert(
+            0,
+            VideoThread {
+                video_queue: Arc::new(RwLock::new(ArrayQueue::new(client::VIDEO_QUEUE_SIZE))),
+                video_sender,
+                decode_fps: Arc::new(RwLock::new(Some(5))),
+                frame_count: Default::default(),
+                discard_queue: Default::default(),
+                fps_control: Default::default(),
+            },
+        );
+
+        remote
+            .fps_control(true, HashMap::from([(0, 5)]), &mut peer)
+            .await;
+        let bytes = timeout(1000, far.next())
+            .await
+            .expect("FPS update was not sent")
+            .unwrap()
+            .unwrap();
+        let fps = Message::parse_from_bytes(&bytes)
+            .unwrap()
+            .misc()
+            .option()
+            .custom_fps;
+        assert!(
+            (5..=120).contains(&fps),
+            "automatic fps {fps} reads as a suspended viewer"
+        );
     }
 }
 
