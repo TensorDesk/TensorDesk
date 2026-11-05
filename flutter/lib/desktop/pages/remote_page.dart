@@ -744,13 +744,12 @@ class _RemotePageState extends State<RemotePage>
     });
   }
 
-  /// Called whenever a meaningful user input happens (mouse move, keyboard
-  /// event, window focus/restore). Resets the idle clock and bounces the
-  /// activity back to foreground if we were blurred/inactive.
+  /// Called whenever a meaningful user input or window-restore event happens
+  /// (mouse move, keyboard event, window focus/restore/maximize). Resets the
+  /// idle clock and bounces any non-foreground activity back to foreground.
   void _markInput() {
     _lastInputAt = DateTime.now();
-    if (_viewerActivity != ViewerActivity.foreground &&
-        _viewerActivity != ViewerActivity.suspended) {
+    if (_viewerActivity != ViewerActivity.foreground) {
       _setViewerActivity(ViewerActivity.foreground);
     }
   }

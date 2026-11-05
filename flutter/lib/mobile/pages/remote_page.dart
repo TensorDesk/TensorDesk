@@ -288,8 +288,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
 
   void _markInput() {
     _lastInputAt = DateTime.now();
-    if (_viewerActivity != ViewerActivity.foreground &&
-        _viewerActivity != ViewerActivity.suspended) {
+    if (_viewerActivity != ViewerActivity.foreground) {
       _setViewerActivity(ViewerActivity.foreground);
     }
   }

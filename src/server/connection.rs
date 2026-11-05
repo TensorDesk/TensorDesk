@@ -4947,17 +4947,13 @@ impl Connection {
             }
         }
         if o.custom_fps >= 5 {
-            // 既有的"用户自定义 fps"语义：作为 QoS 全局上限，行为保持不变。
-            let id = self.inner.id();
-            let mut qos = video_service::VIDEO_QOS.lock().unwrap();
-            let prev_explicit = qos.user_fps_target(id);
-            qos.user_custom_fps(id, o.custom_fps as _);
-            if prev_explicit > 0 {
-                // 该 viewer 之前处于挂起：清掉显式限制并补一个 I 帧。
-                qos.user_explicit_fps(id, 0);
-                video_service::FORCE_KEYFRAME
-                    .store(true, std::sync::atomic::Ordering::Relaxed);
-            }
+            // 用户/自动 fps 上限：只更新 custom_fps。>=5 也可能来自 viewer 的
+            // 自动帧率控制器，不代表 viewer 重新可见，所以这里不清除挂起；
+            // 恢复只由 custom_fps < 0 触发。
+            video_service::VIDEO_QOS
+                .lock()
+                .unwrap()
+                .user_custom_fps(self.inner.id(), o.custom_fps as _);
         } else if o.custom_fps > 0 {
             // 1..=4：viewer 挂起（最小化 / 后台 / 失焦），只停发给该 viewer。
             video_service::VIDEO_QOS
