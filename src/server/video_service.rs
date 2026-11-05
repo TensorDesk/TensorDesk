@@ -141,11 +141,6 @@ lazy_static::lazy_static! {
     /// natural keyframe interval.
     pub static ref FORCE_KEYFRAME: std::sync::atomic::AtomicBool =
         std::sync::atomic::AtomicBool::new(false);
-    /// Monotonic per-encode-frame counter. Used by `send_video_frame_to_subscribers`
-    /// together with `VIDEO_QOS.user_fps_target()` to decide which frames each
-    /// subscriber actually receives (per-viewer fps drop).
-    pub static ref FRAME_IDX: std::sync::atomic::AtomicU64 =
-        std::sync::atomic::AtomicU64::new(0);
 }
 
 struct Screenshot {
@@ -606,17 +601,15 @@ fn get_capturer(
 }
 
 /// Per-subscriber video frame send. Unlike `GenericService::send_video_frame`,
-/// this respects `VIDEO_QOS.user_fps_target()` — subscribers with an explicit
-/// low-fps request (suspended / blurred / idle) only receive every N-th frame.
+/// this skips subscribers whose `VIDEO_QOS.user_fps_target()` is non-zero, i.e.
+/// viewers that asked to be suspended (window minimized / backgrounded).
+///
+/// Suspended viewers receive no frames at all, not a decimated stream: coded
+/// inter frames reference the previously encoded frame, so a viewer that
+/// misses one cannot decode the next. `connection.rs` forces a keyframe when
+/// the viewer resumes, which rebuilds the reference chain from scratch.
 /// Returns the set of conn ids that actually got the frame.
 fn send_video_frame_to_subscribers(sp: &GenericService, msg: Message) -> HashSet<i32> {
-    let msg = Arc::new(msg);
-    let frame_idx = FRAME_IDX
-        .fetch_add(1, std::sync::atomic::Ordering::Relaxed) as u64;
-
-    // Snapshot encoder fps once so we don't thrash QOS lock per-subscriber.
-    let encoder_fps: u64 = VIDEO_QOS.lock().unwrap().fps().max(1) as u64;
-
     // Collect subscriber ids first — QOS + service lock must never nest.
     let ids: Vec<i32> = {
         let mut v = Vec::new();
@@ -624,24 +617,19 @@ fn send_video_frame_to_subscribers(sp: &GenericService, msg: Message) -> HashSet
         v
     };
 
-    // QOS-only pass: map each subscriber id to its explicit fps target.
-    let fps_targets: HashMap<i32, u64> = {
+    let suspended: HashSet<i32> = {
         let qos = VIDEO_QOS.lock().unwrap();
         ids.iter()
             .copied()
-            .map(|id| (id, qos.user_fps_target(id) as u64))
+            .filter(|id| qos.user_fps_target(*id) > 0)
             .collect()
     };
 
-    // Service-only pass: apply per-viewer drop, then send.
+    let msg = Arc::new(msg);
     let mut sent = HashSet::new();
     sp.for_each_subscribe_mut(|id, sub| {
-        let target = fps_targets.get(&id).copied().unwrap_or(0);
-        if target > 0 && target < encoder_fps {
-            let skip = encoder_fps / target.max(1);
-            if frame_idx % skip != 0 {
-                return;
-            }
+        if suspended.contains(&id) {
+            return;
         }
         sub.send(msg.clone());
         sent.insert(id);

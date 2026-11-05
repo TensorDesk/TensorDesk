@@ -3496,8 +3496,27 @@ impl LoginConfigHandler {
             self.config.follow_remote_cursor.v
         } else if name == "follow-remote-window" {
             self.config.follow_remote_window.v
+        } else if name == keys::OPTION_ENABLE_VIEWER_SUSPEND
+            || name == keys::OPTION_SUSPEND_ON_MINIMIZE
+            || name == keys::OPTION_SUSPEND_ON_BACKGROUND
+            || name == keys::OPTION_SUSPEND_ON_BLUR
+        {
+            self.get_option_bool(name, true)
+        } else if name == keys::OPTION_SUSPEND_IDLE_ENABLE {
+            // 被动观看（不回鼠标）也会被判定空闲，默认关闭以免误冻结画面
+            self.get_option_bool(name, false)
         } else {
             !self.get_option(name).is_empty()
+        }
+    }
+
+    /// Read a boolean option from the peer config's free-form `options` map,
+    /// falling back to `default` when the key is absent or unparseable.
+    fn get_option_bool(&self, name: &str, default: bool) -> bool {
+        match self.config.options.get(name).map(|v| v.as_str()) {
+            Some("1") | Some("true") => true,
+            Some("0") | Some("false") => false,
+            _ => default,
         }
     }
 

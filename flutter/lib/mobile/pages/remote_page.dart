@@ -90,8 +90,7 @@ class RemotePage extends StatefulWidget {
 /// page does not need to import from the desktop-only tree.
 enum ViewerActivity { foreground, blurred, suspended, inactive }
 
-const _kMinimizeFps = 1;
-const _kBlurFps = 5;
+const _kIdleThresholdSeconds = 120;
 
 class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   Timer? _timer;
@@ -107,7 +106,6 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   DateTime? _lastInputAt;
   Timer? _idleTimer;
   bool _idleSuspendEnabled = false;
-  int _idleThresholdSeconds = 120;
 
   final _blockableOverlayState = BlockableOverlayState();
 
@@ -187,9 +185,6 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     if (enableSuspend) {
       _idleSuspendEnabled =
           bind.sessionGetToggleOptionSync(sessionId: sessionId, arg: 'suspend-idle-enable');
-      final seconds =
-          bind.sessionGetOptionSync(sessionId: sessionId, arg: 'suspend-idle-seconds') ?? 120;
-      _idleThresholdSeconds = seconds.clamp(30, 600);
       _lastInputAt = DateTime.now();
       _startIdleTimer();
     }
@@ -270,13 +265,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     if (!mounted) return;
     if (activity == _viewerActivity) return;
     _viewerActivity = activity;
-    final fps = switch (activity) {
-      ViewerActivity.foreground => 0,
-      ViewerActivity.blurred => _kBlurFps,
-      ViewerActivity.inactive => _kBlurFps,
-      ViewerActivity.suspended => _kMinimizeFps,
-    };
-    bind.sessionSetCustomFps(sessionId: sessionId, fps: fps);
+    bind.sessionSetCustomFps(
+        sessionId: sessionId,
+        fps: activity == ViewerActivity.foreground ? -1 : 1);
   }
 
   void _startIdleTimer() {
@@ -286,7 +277,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       if (_viewerActivity != ViewerActivity.foreground) return;
       if (!_idleSuspendEnabled) return;
       final elapsed = DateTime.now().difference(_lastInputAt ?? DateTime.now());
-      if (elapsed.inSeconds >= _idleThresholdSeconds) {
+      if (elapsed.inSeconds >= _kIdleThresholdSeconds) {
         _setViewerActivity(ViewerActivity.inactive);
       }
     });

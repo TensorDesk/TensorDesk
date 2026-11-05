@@ -558,6 +558,19 @@ impl<T: InvokeUiSession> Session<T> {
     }
 
     pub fn set_custom_fps(&self, custom_fps: i32) {
+        // < 5 是 viewer 挂起（1..=4）与恢复（-1）的瞬态信号，只改变本次会话
+        // 该 viewer 的收帧，不能写进用户偏好，也不改动内存里的用户 fps 设置。
+        if custom_fps < 5 {
+            let mut misc = Misc::new();
+            misc.set_option(OptionMessage {
+                custom_fps,
+                ..Default::default()
+            });
+            let mut msg = Message::new();
+            msg.set_misc(misc);
+            self.send(Data::Message(msg));
+            return;
+        }
         let msg = self.lc.write().unwrap().set_custom_fps(custom_fps, true);
         self.send(Data::Message(msg));
     }

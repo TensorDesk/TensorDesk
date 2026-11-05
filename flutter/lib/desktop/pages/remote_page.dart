@@ -54,8 +54,7 @@ enum ViewerActivity {
   inactive,
 }
 
-const _kMinimizeFps = 1;
-const _kBlurFps = 5;
+const _kIdleThresholdSeconds = 120;
 
 // Used to skip session close if "move to new window" is clicked.
 final Map<String, bool> closeSessionOnDispose = {};
@@ -124,7 +123,6 @@ class _RemotePageState extends State<RemotePage>
   DateTime? _lastInputAt;
   Timer? _idleTimer;
   bool _idleSuspendEnabled = false;
-  int _idleThresholdSeconds = 120;
   // Known macOS remote-input trade-offs (kept simple intentionally):
   // 1. Dialogs rely on FocusNode loss plus middleBlocked, not mirrored dialog
   //    state. Reproduce: activate remote input, open a dialog, then type.
@@ -266,16 +264,10 @@ class _RemotePageState extends State<RemotePage>
     // Load suspend config values, then start the idle watcher that transitions
     // viewer_activity to inactive when no input event is observed for the
     // configured threshold.
-    final enableSuspend = bind.sessionGetToggleOptionSync(
-            sessionId: sessionId, arg: 'enable-viewer-suspend') &&
-        !isWeb;
+    final enableSuspend = _suspendEnabled;
     if (enableSuspend) {
       _idleSuspendEnabled = bind.sessionGetToggleOptionSync(
           sessionId: sessionId, arg: 'suspend-idle-enable');
-      final seconds = bind.sessionGetOptionSync(
-              sessionId: sessionId, arg: 'suspend-idle-seconds') ??
-          120;
-      _idleThresholdSeconds = seconds.clamp(30, 600);
       _lastInputAt = DateTime.now();
       _startIdleTimer();
     }
@@ -723,27 +715,16 @@ class _RemotePageState extends State<RemotePage>
 
   // === Phase 5: viewer suspend core ===
 
-  /// Transition to the given [activity] and send the appropriate
-  /// `sessionSetCustomFps` to the server. The actual fps value is derived from
-  /// the activity and the client config (defaults are `_kMinimizeFps` /
-  /// `_kBlurFps`). A transition back to `foreground` asks the server to force
-  /// one I-frame so the resumed viewer doesn't wait for the next natural
-  /// keyframe interval.
+  /// Transition to the given [activity]. The server stops sending video frames
+  /// to this viewer while it is suspended, and forces one I-frame when it
+  /// resumes, so a minimize/blur/idle window costs almost no relay traffic.
   void _setViewerActivity(ViewerActivity activity) {
     if (!mounted) return;
     if (activity == _viewerActivity) return;
     _viewerActivity = activity;
-    final fps = switch (activity) {
-      ViewerActivity.foreground => 0, // 0 means "reset to user setting" (see Rust side)
-      ViewerActivity.blurred => _kBlurFps,
-      ViewerActivity.inactive => _kBlurFps,
-      ViewerActivity.suspended => _kMinimizeFps,
-    };
-    if (fps == 0) {
-      bind.sessionSetCustomFps(sessionId: sessionId, fps: 0);
-    } else {
-      bind.sessionSetCustomFps(sessionId: sessionId, fps: fps);
-    }
+    bind.sessionSetCustomFps(
+        sessionId: sessionId,
+        fps: activity == ViewerActivity.foreground ? -1 : 1);
   }
 
   void _startIdleTimer() {
@@ -754,7 +735,7 @@ class _RemotePageState extends State<RemotePage>
       if (_viewerActivity != ViewerActivity.foreground) return;
       if (!_idleSuspendEnabled) return;
       final elapsed = DateTime.now().difference(_lastInputAt ?? DateTime.now());
-      if (elapsed.inSeconds >= _idleThresholdSeconds) {
+      if (elapsed.inSeconds >= _kIdleThresholdSeconds) {
         _setViewerActivity(ViewerActivity.inactive);
       }
     });

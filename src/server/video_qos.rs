@@ -430,8 +430,8 @@ impl VideoQoS {
 
     /// Viewer-explicit receive fps. A value of `0` clears the explicit
     /// override (returning to the viewer's normal custom_fps / encoder fps).
-    /// Values 1..=4 are allowed — this is for the viewer-suspend path where
-    /// they ask for a low or keep-alive frame rate.
+    /// Any non-zero value marks the viewer as suspended: video frames are not
+    /// sent to it at all, and a keyframe is forced when it resumes.
     pub fn user_explicit_fps(&mut self, id: i32, fps: u32) {
         if fps == 0 {
             if let Some(user) = self.users.get_mut(&id) {

@@ -4946,21 +4946,32 @@ impl Connection {
                     .user_image_quality(self.inner.id(), image_quality);
             }
         }
-        if o.custom_fps > 0 {
+        if o.custom_fps >= 5 {
+            // 既有的"用户自定义 fps"语义：作为 QoS 全局上限，行为保持不变。
             let id = self.inner.id();
             let mut qos = video_service::VIDEO_QOS.lock().unwrap();
             let prev_explicit = qos.user_fps_target(id);
-            // QOS.fps_cap() 还是走 custom_fps 的 MIN_FPS guard（>=5）——
-            // 给 encoder 全局 fps 正常兜底；显式的 per-viewer drop 交给 explicit_fps。
             qos.user_custom_fps(id, o.custom_fps as _);
-            qos.user_explicit_fps(id, o.custom_fps as _);
-            // Viewer 从 suspend / blur 恢复（explicit_fps 从小值跳到正常值）时，
-            // 请求 encoder 给下一个 viewer 一个强制 I 帧，避免等下一个 keyframe 周期。
-            if prev_explicit > 0 && prev_explicit <= 5 && o.custom_fps as u32 > prev_explicit {
-                video_service::FORCE_KEYFRAME.store(
-                    true,
-                    std::sync::atomic::Ordering::Relaxed,
-                );
+            if prev_explicit > 0 {
+                // 该 viewer 之前处于挂起：清掉显式限制并补一个 I 帧。
+                qos.user_explicit_fps(id, 0);
+                video_service::FORCE_KEYFRAME
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+        } else if o.custom_fps > 0 {
+            // 1..=4：viewer 挂起（最小化 / 后台 / 失焦），只停发给该 viewer。
+            video_service::VIDEO_QOS
+                .lock()
+                .unwrap()
+                .user_explicit_fps(self.inner.id(), o.custom_fps as u32);
+        } else if o.custom_fps < 0 {
+            // -1：viewer 恢复，清除挂起标记并强制下一帧为 I 帧。
+            let id = self.inner.id();
+            let mut qos = video_service::VIDEO_QOS.lock().unwrap();
+            if qos.user_fps_target(id) > 0 {
+                qos.user_explicit_fps(id, 0);
+                video_service::FORCE_KEYFRAME
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
             }
         }
         if let Some(q) = o.supported_decoding.clone().take() {
