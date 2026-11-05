@@ -249,6 +249,23 @@ pub fn session_get_remember(session_id: SessionID) -> Option<bool> {
     }
 }
 
+/// Returns true when the last disconnect of this session happened within
+/// `buffer_sec` seconds AND we had at least one successful connection (a
+/// session_key is present). Used by the Flutter reconnect path to decide
+/// whether to auto-reconnect without showing the disconnect dialog — the
+/// caller only needs a yes/no, the timing logic lives entirely in
+/// `ConnectionRoundState`.
+pub fn session_can_incremental_reconnect(session_id: SessionID, buffer_sec: u64) -> bool {
+    let Some(session) = sessions::get_session_by_session_id(&session_id) else {
+        return false;
+    };
+    session
+        .connection_round_state
+        .lock()
+        .unwrap()
+        .can_incremental_reconnect(buffer_sec)
+}
+
 pub fn session_get_toggle_option(session_id: SessionID, arg: String) -> Option<bool> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_toggle_option(arg))

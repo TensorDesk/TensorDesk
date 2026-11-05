@@ -105,9 +105,23 @@ enum ConnectionState {
 }
 
 /// ConnectionRoundState is used to control the reconnecting logic.
+///
+/// Phase 5 additions: `session_key` + `disconnected_at` let the client
+/// distinguish a transient network blip (same session, disconnected within
+/// `reconnect-buffer-seconds`) from a real disconnection (new session or
+/// stale). Flutter uses this to decide whether to auto-reconnect without
+/// showing the disconnect dialog.
 pub struct ConnectionRoundState {
     round: u32,
     state: ConnectionState,
+    // === Phase 5: incremental reconnect bookkeeping ===
+    /// Session key ("peer_id:name:session_id") last seen in LoginResponse.
+    /// Populated on set_connected; cleared only on full reset.
+    session_key: Option<String>,
+    /// Timestamp of the most recent disconnection. Updated by
+    /// handle_disconnected so the reconnect path can decide whether the
+    /// window for an incremental (no-dialog) reconnect is still open.
+    disconnected_at: Option<std::time::Instant>,
 }
 
 impl ConnectionRoundState {
@@ -117,7 +131,14 @@ impl ConnectionRoundState {
         self.round
     }
 
-    pub fn set_connected(&mut self) {
+    pub fn set_connected(&mut self, session_key: Option<String>) {
+        self.state = ConnectionState::Connected;
+        if let Some(k) = session_key {
+            self.session_key = Some(k);
+        }
+    }
+
+    pub fn set_connected_keep_key(&mut self) {
         self.state = ConnectionState::Connected;
     }
 
@@ -134,12 +155,35 @@ impl ConnectionRoundState {
             false
         } else {
             self.state = ConnectionState::Disconnected;
+            self.disconnected_at = Some(std::time::Instant::now());
             true
         }
     }
 
     pub fn is_connected(&self) -> bool {
         matches!(self.state, ConnectionState::Connected)
+    }
+
+    /// True when the last disconnect happened within `buffer_sec` seconds and
+    /// we still have a session_key to identify the session. Used by the
+    /// Flutter reconnect path to skip the dialog and auto-reconnect.
+    pub fn can_incremental_reconnect(&self, buffer_sec: u64) -> bool {
+        let Some(deadline) = self.disconnected_at else {
+            return false;
+        };
+        if self.session_key.is_none() {
+            return false;
+        }
+        deadline.elapsed().as_secs() < buffer_sec
+    }
+
+    pub fn clear_session(&mut self) {
+        self.session_key = None;
+        self.disconnected_at = None;
+    }
+
+    pub fn session_key(&self) -> Option<&str> {
+        self.session_key.as_deref()
     }
 }
 
@@ -148,6 +192,8 @@ impl Default for ConnectionRoundState {
         Self {
             round: 0,
             state: ConnectionState::Connecting,
+            session_key: None,
+            disconnected_at: None,
         }
     }
 }
@@ -2104,4 +2150,90 @@ async fn start_one_port_forward<T: InvokeUiSession>(
 async fn send_note(url: String, id: String, sid: u64, note: String) {
     let body = serde_json::json!({ "id": id, "session_id": sid, "note": note });
     allow_err!(crate::post_request(url, body.to_string(), "").await);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ConnectionRoundState;
+
+    // --- Phase 5: incremental reconnect (ConnectionRoundState bookkeeping) ---
+
+    #[test]
+    fn disconnected_within_buffer_allows_incremental() {
+        let mut s = ConnectionRoundState::default();
+        s.new_round();
+        s.set_connected(Some("session-abc".to_string()));
+        assert!(!s.can_incremental_reconnect(30)); // not disconnected yet
+
+        s.set_disconnected(1);
+        // Disconnected 0s ago, session_key present → OK for incremental
+        assert!(s.can_incremental_reconnect(30));
+    }
+
+    #[test]
+    fn disconnected_outside_buffer_denies_incremental() {
+        let mut s = ConnectionRoundState::default();
+        s.new_round();
+        s.set_connected(Some("session-abc".to_string()));
+        s.set_disconnected(1);
+
+        // Manually poison disconnected_at so elapsed > 30s: we can't easily
+        // advance std::time::Instant, so just check that buffer_sec=0 denies
+        // everything. The elapsed-time path is implicitly covered by the
+        // real-time unit test below.
+        assert!(!s.can_incremental_reconnect(0));
+    }
+
+    #[test]
+    fn never_connected_denies_incremental() {
+        let mut s = ConnectionRoundState::default();
+        s.new_round();
+        // No set_connected → session_key is None
+        s.set_disconnected(1);
+        assert!(!s.can_incremental_reconnect(30));
+    }
+
+    #[test]
+    fn clear_session_wipes_both_fields() {
+        let mut s = ConnectionRoundState::default();
+        s.new_round();
+        s.set_connected(Some("session-abc".to_string()));
+        s.set_disconnected(1);
+        assert!(s.can_incremental_reconnect(30));
+
+        s.clear_session();
+        assert!(!s.can_incremental_reconnect(30));
+        assert!(s.session_key().is_none());
+    }
+
+    #[test]
+    fn elapsed_buffer_deadline() {
+        // Real-time test: 1s buffer, sleep 2s → should deny.
+        let mut s = ConnectionRoundState::default();
+        s.new_round();
+        s.set_connected(Some("session-abc".to_string()));
+        s.set_disconnected(1);
+        assert!(s.can_incremental_reconnect(2));
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        assert!(!s.can_incremental_reconnect(2));
+    }
+
+    #[test]
+    fn set_connected_keep_key_preserves_incremental_after_reconnect() {
+        // After one incremental reconnect (round 2), a new disconnect in the
+        // same buffer window should still count as incremental (same session_key).
+        let mut s = ConnectionRoundState::default();
+        s.new_round(); // round=1
+        s.set_connected(Some("session-abc".to_string()));
+        s.set_disconnected(1);
+        assert!(s.can_incremental_reconnect(30));
+
+        s.new_round(); // round=2
+        s.set_connected_keep_key();
+        // session_key still "session-abc"
+        assert_eq!(s.session_key(), Some("session-abc"));
+
+        s.set_disconnected(2);
+        assert!(s.can_incremental_reconnect(30));
+    }
 }

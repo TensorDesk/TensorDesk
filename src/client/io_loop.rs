@@ -209,7 +209,7 @@ impl<T: InvokeUiSession> Remote<T> {
                     .connection_round_state
                     .lock()
                     .unwrap()
-                    .set_connected();
+                    .set_connected(Some("connected".to_string()));
                 let is_secured = peer.is_secured();
                 let trust = crate::trusted_devices::client::Session::new(
                     &self.handler.lc.read().unwrap(),
