@@ -974,6 +974,58 @@ mod tests {
         assert_eq!(qos.fps(), FPS, "the third keeps the restored frame rate");
     }
 
+    // --- Phase 5: per-viewer explicit_fps (viewer suspend) tests ---
+
+    #[test]
+    fn explicit_fps_set_and_cleared() {
+        let mut qos = VideoQoS::default();
+        // No user yet: user_fps_target returns 0 (default, "no explicit request").
+        assert_eq!(qos.user_fps_target(99), 0);
+
+        qos.user_explicit_fps(99, 5);
+        assert_eq!(qos.user_fps_target(99), 5);
+
+        qos.user_explicit_fps(99, 1); // keep-alive during suspend
+        assert_eq!(qos.user_fps_target(99), 1);
+
+        qos.user_explicit_fps(99, 0); // reset
+        assert_eq!(qos.user_fps_target(99), 0);
+    }
+
+    #[test]
+    fn explicit_fps_is_independent_of_qos_global_fps() {
+        let mut qos = stable_qos();
+        qos.user_explicit_fps(1, 1); // viewer 1 asks for keep-alive
+
+        // Global encoder fps is still driven by QoS (congestion), untouched by
+        // explicit_fps. The per-viewer drop happens only in send_video_frame_to_subscribers.
+        assert_eq!(qos.fps(), FPS); // FPS = 30 at stable_qos
+        assert_eq!(qos.user_fps_target(1), 1);
+
+        // Meanwhile a second viewer with no explicit request behaves normally.
+        qos.users.insert(2, UserData::default());
+        assert_eq!(qos.user_fps_target(2), 0); // 0 = "use encoder fps"
+    }
+
+    #[test]
+    fn custom_fps_and_explicit_fps_coexist() {
+        // custom_fps feeds QoS fps_cap (global encoder fps floor/ceiling),
+        // explicit_fps feeds the per-subscriber drop. They are orthogonal.
+        let mut qos = VideoQoS::default();
+        qos.users.insert(1, UserData::default());
+
+        // User picks a custom_fps of 15 (QoS-wide preference).
+        qos.user_custom_fps(1, 15);
+        assert_eq!(qos.users.get(&1).unwrap().custom_fps, Some(15));
+
+        // Viewer then asks for 1fps during window suspend.
+        qos.user_explicit_fps(1, 1);
+        assert_eq!(qos.user_fps_target(1), 1);
+
+        // QoS still reflects the custom_fps cap, not explicit_fps.
+        assert_eq!(qos.users.get(&1).unwrap().fps_cap(), 15);
+    }
+
     #[test]
     fn restore_aims_lower_after_a_restore_that_congested() {
         let mut qos = stable_qos();
