@@ -30,6 +30,33 @@ import 'package:flutter_hbb/native/custom_cursor.dart'
 
 final SimpleWrapper<bool> _firstEnterImage = SimpleWrapper(false);
 
+/// The viewer-side state that drives per-session video frame drop.
+///
+/// This enum is **viewer-local** — the desktop remote page knows whether the
+/// window is minimized, blurred, backgrounded, or the user has been idle, and
+/// maps that knowledge to a low-bandwidth request sent to the server via
+/// `sessionSetCustomFps`. The server-side `VIDEO_QOS.user_explicit_fps` field
+/// (Rust) mirrors this decision and skips frames per-subscriber.
+enum ViewerActivity {
+  /// Normal: every encoder frame is sent to this viewer.
+  foreground,
+
+  /// Window lost focus / Alt+Tab. Frame rate drops to `suspend-blur-fps`
+  /// (default 5) to save bandwidth while keeping the session responsive.
+  blurred,
+
+  /// Window minimized or app backgrounded. Frame rate drops to
+  /// `suspend-minimize-fps` (default 1 — keep-alive) to minimize relay usage.
+  suspended,
+
+  /// User has not produced input events for `suspend-idle-seconds`.
+  /// Treated the same as `blurred`.
+  inactive,
+}
+
+const _kMinimizeFps = 1;
+const _kBlurFps = 5;
+
 // Used to skip session close if "move to new window" is clicked.
 final Map<String, bool> closeSessionOnDispose = {};
 
@@ -90,6 +117,14 @@ class _RemotePageState extends State<RemotePage>
   Timer? _timer;
   String keyboardMode = "legacy";
   bool _isWindowBlur = false;
+
+  // === Viewer suspend state (Phase 5): window events + idle watcher drive ===
+  // per-session video drop on the server side.
+  ViewerActivity _viewerActivity = ViewerActivity.foreground;
+  DateTime? _lastInputAt;
+  Timer? _idleTimer;
+  bool _idleSuspendEnabled = false;
+  int _idleThresholdSeconds = 120;
   // Known macOS remote-input trade-offs (kept simple intentionally):
   // 1. Dialogs rely on FocusNode loss plus middleBlocked, not mirrored dialog
   //    state. Reproduce: activate remote input, open a dialog, then type.
@@ -226,6 +261,24 @@ class _RemotePageState extends State<RemotePage>
     // Register callback to cancel debounce timer when relative mouse mode is disabled
     _ffi.inputModel.onRelativeMouseModeDisabled =
         _cancelPointerLockCenterDebounceTimer;
+
+    // === Phase 5: idle watcher initialization ===
+    // Load suspend config values, then start the idle watcher that transitions
+    // viewer_activity to inactive when no input event is observed for the
+    // configured threshold.
+    final enableSuspend = bind.sessionGetToggleOptionSync(
+            sessionId: sessionId, arg: 'enable-viewer-suspend') &&
+        !isWeb;
+    if (enableSuspend) {
+      _idleSuspendEnabled = bind.sessionGetToggleOptionSync(
+          sessionId: sessionId, arg: 'suspend-idle-enable');
+      final seconds = bind.sessionGetOptionSync(
+              sessionId: sessionId, arg: 'suspend-idle-seconds') ??
+          120;
+      _idleThresholdSeconds = seconds.clamp(30, 600);
+      _lastInputAt = DateTime.now();
+      _startIdleTimer();
+    }
 
     _waylandKeyboardModeWorker = ever(_ffi.ffiModel.pi.isSet, (bool isSet) {
       if (isSet) {
@@ -461,6 +514,14 @@ class _RemotePageState extends State<RemotePage>
     _macOSLifecycleState = state;
     if (state == AppLifecycleState.resumed) {
       _syncMacOSKeyboardGrab(reassert: true);
+      _markInput();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      if (_suspendEnabled &&
+          bind.sessionGetToggleOptionSync(
+              sessionId: sessionId, arg: 'suspend-on-background')) {
+        _setViewerActivity(ViewerActivity.suspended);
+      }
     } else if (_macOSInputActive) {
       _ffi.inputModel.enterOrLeave(false);
       _macOSInputActive = false;
@@ -505,6 +566,11 @@ class _RemotePageState extends State<RemotePage>
     // The cursor will be re-hidden and re-centered when window regains focus.
     if (_ffi.inputModel.relativeMouseMode.value) {
       _ffi.inputModel.onWindowBlur();
+    }
+    if (_suspendEnabled &&
+        bind.sessionGetToggleOptionSync(
+            sessionId: sessionId, arg: 'suspend-on-blur')) {
+      _setViewerActivity(ViewerActivity.blurred);
     }
   }
 
@@ -556,6 +622,7 @@ class _RemotePageState extends State<RemotePage>
       _ffi.inputModel.onWindowFocus();
     }
     _syncMacOSKeyboardGrab(reassert: true, allowInactiveLifecycle: true);
+    _markInput(); // Resets idle clock + restores foreground if blurred/inactive
   }
 
   @override
@@ -569,6 +636,7 @@ class _RemotePageState extends State<RemotePage>
     WakelockManager.enable(_uniqueKey);
     // Update pointer lock center when window is restored
     _updatePointerLockCenterIfNeeded();
+    _markInput();
   }
 
   // When the window is unminimized, onWindowMaximize or onWindowRestore can be called when the old state was maximized or not.
@@ -578,6 +646,7 @@ class _RemotePageState extends State<RemotePage>
     WakelockManager.enable(_uniqueKey);
     // Update pointer lock center when window is maximized
     _updatePointerLockCenterIfNeeded();
+    _markInput();
   }
 
   @override
@@ -627,6 +696,11 @@ class _RemotePageState extends State<RemotePage>
     if (_ffi.inputModel.relativeMouseMode.value) {
       _ffi.inputModel.onWindowBlur();
     }
+    if (_suspendEnabled &&
+        bind.sessionGetToggleOptionSync(
+            sessionId: sessionId, arg: 'suspend-on-minimize')) {
+      _setViewerActivity(ViewerActivity.suspended);
+    }
   }
 
   @override
@@ -646,6 +720,63 @@ class _RemotePageState extends State<RemotePage>
       _queueMacOSKeyboardAfterFullScreen();
     }
   }
+
+  // === Phase 5: viewer suspend core ===
+
+  /// Transition to the given [activity] and send the appropriate
+  /// `sessionSetCustomFps` to the server. The actual fps value is derived from
+  /// the activity and the client config (defaults are `_kMinimizeFps` /
+  /// `_kBlurFps`). A transition back to `foreground` asks the server to force
+  /// one I-frame so the resumed viewer doesn't wait for the next natural
+  /// keyframe interval.
+  void _setViewerActivity(ViewerActivity activity) {
+    if (!mounted) return;
+    if (activity == _viewerActivity) return;
+    _viewerActivity = activity;
+    final fps = switch (activity) {
+      ViewerActivity.foreground => 0, // 0 means "reset to user setting" (see Rust side)
+      ViewerActivity.blurred => _kBlurFps,
+      ViewerActivity.inactive => _kBlurFps,
+      ViewerActivity.suspended => _kMinimizeFps,
+    };
+    if (fps == 0) {
+      bind.sessionSetCustomFps(sessionId: sessionId, fps: 0);
+    } else {
+      bind.sessionSetCustomFps(sessionId: sessionId, fps: fps);
+    }
+  }
+
+  void _startIdleTimer() {
+    _idleTimer?.cancel();
+    // Poll every second — cheap, keeps the transition responsive.
+    _idleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_viewerActivity != ViewerActivity.foreground) return;
+      if (!_idleSuspendEnabled) return;
+      final elapsed = DateTime.now().difference(_lastInputAt ?? DateTime.now());
+      if (elapsed.inSeconds >= _idleThresholdSeconds) {
+        _setViewerActivity(ViewerActivity.inactive);
+      }
+    });
+  }
+
+  /// Called whenever a meaningful user input happens (mouse move, keyboard
+  /// event, window focus/restore). Resets the idle clock and bounces the
+  /// activity back to foreground if we were blurred/inactive.
+  void _markInput() {
+    _lastInputAt = DateTime.now();
+    if (_viewerActivity != ViewerActivity.foreground &&
+        _viewerActivity != ViewerActivity.suspended) {
+      _setViewerActivity(ViewerActivity.foreground);
+    }
+  }
+
+  bool get _suspendEnabled =>
+      bind.sessionGetToggleOptionSync(
+          sessionId: sessionId, arg: 'enable-viewer-suspend') &&
+      !isWeb;
+
+  // === Phase 5 end ===
 
   @override
   Future<void> dispose() async {
@@ -689,6 +820,9 @@ class _RemotePageState extends State<RemotePage>
     }
     await _ffi.close(closeSession: closeSession);
     _timer?.cancel();
+    _timer = null;
+    _idleTimer?.cancel();
+    _idleTimer = null;
     _ffi.dialogManager.dismissAll();
     if (closeSession) {
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,

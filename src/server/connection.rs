@@ -4947,10 +4947,21 @@ impl Connection {
             }
         }
         if o.custom_fps > 0 {
-            video_service::VIDEO_QOS
-                .lock()
-                .unwrap()
-                .user_custom_fps(self.inner.id(), o.custom_fps as _);
+            let id = self.inner.id();
+            let mut qos = video_service::VIDEO_QOS.lock().unwrap();
+            let prev_explicit = qos.user_fps_target(id);
+            // QOS.fps_cap() 还是走 custom_fps 的 MIN_FPS guard（>=5）——
+            // 给 encoder 全局 fps 正常兜底；显式的 per-viewer drop 交给 explicit_fps。
+            qos.user_custom_fps(id, o.custom_fps as _);
+            qos.user_explicit_fps(id, o.custom_fps as _);
+            // Viewer 从 suspend / blur 恢复（explicit_fps 从小值跳到正常值）时，
+            // 请求 encoder 给下一个 viewer 一个强制 I 帧，避免等下一个 keyframe 周期。
+            if prev_explicit > 0 && prev_explicit <= 5 && o.custom_fps as u32 > prev_explicit {
+                video_service::FORCE_KEYFRAME.store(
+                    true,
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+            }
         }
         if let Some(q) = o.supported_decoding.clone().take() {
             scrap::codec::Encoder::update(scrap::codec::EncodingUpdate::Update(self.inner.id(), q));

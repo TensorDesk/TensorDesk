@@ -234,12 +234,21 @@ impl EncoderApi for AomEncoder {
         }
     }
 
-    fn encode_to_message(&mut self, input: EncodeInput, ms: i64) -> ResultType<VideoFrame> {
+    fn encode_to_message(
+        &mut self,
+        input: EncodeInput,
+        ms: i64,
+        force_keyframe: bool,
+    ) -> ResultType<VideoFrame> {
         let mut frames = Vec::new();
-        for ref frame in self
-            .encode(ms, input.yuv()?, STRIDE_ALIGN)
-            .with_context(|| "Failed to encode")?
-        {
+        let result = if force_keyframe {
+            self.encode_keyframe(ms, input.yuv()?, STRIDE_ALIGN)
+                .with_context(|| "Failed to encode keyframe")
+        } else {
+            self.encode(ms, input.yuv()?, STRIDE_ALIGN)
+                .with_context(|| "Failed to encode")
+        };
+        for ref frame in result? {
             frames.push(Self::create_frame(frame));
         }
         if frames.len() > 0 {
@@ -290,6 +299,27 @@ impl EncoderApi for AomEncoder {
 
 impl AomEncoder {
     pub fn encode<'a>(&'a mut self, ms: i64, data: &[u8], stride_align: usize) -> Result<EncodeFrames<'a>> {
+        self.encode_with_flags(ms, data, stride_align, 0)
+    }
+
+    /// Force a keyframe on the next encoded frame by passing
+    /// `AOM_EFLAG_FORCE_KF` (= 1) to `aom_codec_encode`.
+    pub fn encode_keyframe<'a>(
+        &'a mut self,
+        ms: i64,
+        data: &[u8],
+        stride_align: usize,
+    ) -> Result<EncodeFrames<'a>> {
+        self.encode_with_flags(ms, data, stride_align, 1 /* AOM_EFLAG_FORCE_KF */)
+    }
+
+    fn encode_with_flags<'a>(
+        &'a mut self,
+        ms: i64,
+        data: &[u8],
+        stride_align: usize,
+        flags: i64,
+    ) -> Result<EncodeFrames<'a>> {
         let bpp = if self.i444 { 24 } else { 12 };
         if data.len() < self.width * self.height * bpp / 8 {
             return Err(Error::FailedCall("len not enough".to_string()));
@@ -316,7 +346,7 @@ impl AomEncoder {
             &image,
             pts as _,
             duration as _, // Duration
-            0,             // Flags
+            flags,
         ));
 
         Ok(EncodeFrames {

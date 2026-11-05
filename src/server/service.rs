@@ -242,6 +242,20 @@ impl<T: Subscriber + From<ConnInner>> ServiceTmpl<T> {
         conn_ids
     }
 
+    /// Iterate over every established subscriber (not the pending-new list) with
+    /// mutable access. Used by video_service to implement per-viewer frame drop
+    /// based on `VIDEO_QOS.user_fps_target()` — callers can apply their own
+    /// send / drop policy without the generic `send_shared` knowledge.
+    pub fn for_each_subscribe_mut<F>(&self, mut f: F)
+    where
+        F: FnMut(i32, &mut T),
+    {
+        let mut lock = self.0.write().unwrap();
+        for (id, s) in lock.subscribes.iter_mut() {
+            f(*id, s);
+        }
+    }
+
     pub fn send_without(&self, msg: Message, sub: i32) {
         let mut lock = self.0.write().unwrap();
         let msg = Arc::new(msg);

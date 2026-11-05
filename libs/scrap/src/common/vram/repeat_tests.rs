@@ -178,9 +178,9 @@ fn hardware_repeats_own_pixels_and_reset_on_recreation() {
                             ctx,
                             bitrate: 1000,
                         };
-                        assert!(encoder.encode_to_message(EncodeInput::Repeat, 0).is_err());
+                        assert!(encoder.encode_to_message(EncodeInput::Repeat, 0, false).is_err());
                         assert!(encoder
-                            .encode_to_message(EncodeInput::Texture((ptr::null_mut(), 0)), 0)
+                            .encode_to_message(EncodeInput::Texture((ptr::null_mut(), 0)), 0, false)
                             .is_err());
                         let mut decoder = Decoder::new(DecodeContext {
                             name: if format == DataFormat::H264 {
@@ -195,7 +195,7 @@ fn hardware_repeats_own_pixels_and_reset_on_recreation() {
                         .unwrap();
                         let source = texture(device.0, width, height, 32);
                         let frame = encoder
-                            .encode_to_message(EncodeInput::Texture((source.0 as _, 0)), 0)
+                            .encode_to_message(EncodeInput::Texture((source.0 as _, 0)), 0, false)
                             .unwrap();
                         check_picture(&mut decoder, frame, width, height, false, 0);
 
@@ -214,19 +214,19 @@ fn hardware_repeats_own_pixels_and_reset_on_recreation() {
                         for count in 1..=100 {
                             let pts = count * 100;
                             let frame =
-                                encoder.encode_to_message(EncodeInput::Repeat, pts).unwrap();
+                                encoder.encode_to_message(EncodeInput::Repeat, pts, false).unwrap();
                             check_picture(&mut decoder, frame, width, height, false, pts);
                         }
 
                         let source = texture(device.0, width, height, 224);
                         let frame = encoder
-                            .encode_to_message(EncodeInput::Texture((source.0 as _, 0)), 10100)
+                            .encode_to_message(EncodeInput::Texture((source.0 as _, 0)), 10100, false)
                             .unwrap();
                         check_picture(&mut decoder, frame, width, height, true, 10100);
                         drop(source);
                         encoder.encoder.set_bitrate(1500).unwrap();
                         let frame = encoder
-                            .encode_to_message(EncodeInput::Repeat, 10200)
+                            .encode_to_message(EncodeInput::Repeat, 10200, false)
                             .unwrap();
                         check_picture(&mut decoder, frame, width, height, true, 10200);
                         eprintln!(

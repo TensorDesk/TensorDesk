@@ -111,9 +111,19 @@ impl EncoderApi for HwRamEncoder {
         }
     }
 
-    fn encode_to_message(&mut self, input: EncodeInput, ms: i64) -> ResultType<VideoFrame> {
+    fn encode_to_message(
+        &mut self,
+        input: EncodeInput,
+        ms: i64,
+        force_keyframe: bool,
+    ) -> ResultType<VideoFrame> {
         let mut vf = VideoFrame::new();
         let mut frames = Vec::new();
+        // HW encoder force-keyframe interface (NVENC FORCE_IDR / QSV force IDR /
+        // VAAPI force keyframe) varies per backend and is not wired through the
+        // FFmpeg `Encoder::encode` call yet. `force_keyframe` is silently
+        // accepted here so the trait matches; VPX/AOM backends honour it.
+        let _ = force_keyframe;
         for frame in self
             .encode(input.yuv()?, ms)
             .with_context(|| "Failed to encode")?

@@ -236,7 +236,7 @@ impl<'a> StaticRefresh<'a> {
                 Ok(())
             })?;
 
-            let result = encoder.encode_to_message(frame, ms);
+            let result = encoder.encode_to_message(frame, ms, false);
             self.last_encode = if matches!(self.codec_format, CodecFormat::VP8 | CodecFormat::VP9) {
                 Instant::now()
             } else {
@@ -340,7 +340,12 @@ mod tests {
             unreachable!()
         }
 
-        fn encode_to_message(&mut self, frame: EncodeInput, _: i64) -> ResultType<VideoFrame> {
+        fn encode_to_message(
+            &mut self,
+            frame: EncodeInput,
+            _: i64,
+            _force_keyframe: bool,
+        ) -> ResultType<VideoFrame> {
             match frame {
                 EncodeInput::YUV(yuv) => assert_eq!(yuv, &[1]),
                 #[cfg(all(windows, feature = "vram"))]

@@ -262,6 +262,11 @@ impl UserDelay {
 struct UserData {
     auto_adjust_fps: Option<u32>, // reserve for compatibility
     custom_fps: Option<u32>,
+    /// Viewer-explicit request for its own receive fps. Set by the client when
+    /// the window is minimized, blurred, or the app is backgrounded. A value
+    /// of None means the viewer has no explicit request — per-subscriber
+    /// drop is skipped (all frames sent). A value of 1 means "keep-alive only".
+    explicit_fps: Option<u32>,
     quality: Option<(i64, Quality)>, // (time, quality)
     delay: UserDelay,
     record: bool,
@@ -421,6 +426,32 @@ impl VideoQoS {
         if let Some(user) = self.users.get_mut(&id) {
             user.custom_fps = Some(fps);
         }
+    }
+
+    /// Viewer-explicit receive fps. A value of `0` clears the explicit
+    /// override (returning to the viewer's normal custom_fps / encoder fps).
+    /// Values 1..=4 are allowed — this is for the viewer-suspend path where
+    /// they ask for a low or keep-alive frame rate.
+    pub fn user_explicit_fps(&mut self, id: i32, fps: u32) {
+        if fps == 0 {
+            if let Some(user) = self.users.get_mut(&id) {
+                user.explicit_fps = None;
+            }
+        } else if fps <= MAX_FPS {
+            let user = self.users.entry(id).or_default();
+            user.explicit_fps = Some(fps);
+        }
+    }
+
+    /// Returns the viewer's explicit receive fps, or `0` if no explicit request.
+    /// A return value of `0` means "follow encoder fps" (no per-subscriber
+    /// drop). This is the API `video_service` uses to decide whether a frame
+    /// should be sent to a specific subscriber.
+    pub fn user_fps_target(&self, id: i32) -> u32 {
+        self.users
+            .get(&id)
+            .and_then(|u| u.explicit_fps)
+            .unwrap_or(0)
     }
 
     pub fn user_auto_adjust_fps(&mut self, id: i32, fps: u32) {

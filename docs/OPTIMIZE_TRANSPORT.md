@@ -290,9 +290,35 @@ UDP 视频包头新增:
 
 工具：`tc qdisc add dev eth0 root netem loss 5%`
 
+#### 3.2.5 证伪（2026-11-05 实测）
+
+**结论：Phase 2 仅适用于 UDP relay 路径；当前直连 TCP 路径无应用层 FEC 空间。当前环境暂缓。**
+
+165（被控）→ 167（控制）直连 IP 场景，默认 TCP；KCP 仅在 relay/NAT 打洞路径启用，直连不可达。用 `tc qdisc` 对 RustDesk 会话流出方向 netem，每档 15s，10Hz 时间戳负载，实测：
+
+| 场景 | 发送字节 | 重传字节 | 重传开销 | 视频帧率 | 最大帧间隔 |
+|---|---|---|---|---|---|
+| 基线 | 63.1 KB | 0 | 0% | 4.7/s | 311 ms |
+| 丢包 1% | 60.7 KB | 747 B | 1.3% | 4.7/s | 411 ms |
+| 丢包 5% | 63.6 KB | 1.4 KB | 2.3% | 4.7/s | 520 ms |
+| 丢包 10% | 72.7 KB | 11.1 KB | 18.0% | 4.8/s | 637 ms |
+| 延迟 50ms | 61.4 KB | 0 | 0% | 4.7/s | 307 ms |
+| 延迟 150ms | 61.5 KB | 0 | 0% | 4.7/s | 307 ms |
+
+- 所有字节最终都被 TCP 重传补偿到达；FEC 只是多了一次"冗余重传"的另一种形式（10% 丢包时 TCP 已付出 18% 重传字节冗余）。
+- 丢包的真实代价是帧间隔抖动翻倍（311 → 637ms），不是带宽。
+- 固定延迟不改变码率/帧率——现有 QoS 以超出基线的队列延迟为判据，会自动吸收路径延迟。
+- 文档引用的 `src/server/video_protocol.rs` 与 UDP 视频通道在代码中不存在；`ControlKey::Pause` 仅当键盘 Pause 键处理。
+
+弱网缓存脚本在 `/tmp/rd-bench/`：`measure_weaknet.sh`（netem + tcpdump + ss 双验证）+ 增强版 `parse_pcap.py`（带重传计数 / 帧间隔统计）。数据完整留存。
+
 ---
 
 ### Phase 3：动态 MTU 探测（低投入中收益，预计 1 周）
+
+#### 3.3.0 适用范围
+
+**仅适用于 UDP / KCP / relay 路径**——TCP 路径由内核自动 MTU 发现，无需要求应用层探测。当前直连测试环境走纯 TCP，本 Phase 在该环境下无验证价值，搁置到 relay/KCP 环境搭建后再评估。
 
 #### 3.3.1 改动位置
 
@@ -337,47 +363,154 @@ Diff tile (BGRA 原始像素)
 
 Phase 1 的 Diff tile data 是原始 BGRA（未压缩），Phase 4 是 **叠加优化**——先差分掉不变 tile，再对变化 tile 压缩。两者独立，Phase 4 可延后实施。
 
+#### 3.4.4 证伪（2026-11-05 实测）
+
+**结论：Phase 4（协议级 tile 增量帧）在 X11+VPX 路径上收益为负，已整体回退。**
+
+实现了 `VideoFrame.tiles` 携带变化 tile 矩形（XOR delta + 增量压缩）、协议协商/收发全链。双机实测（黑窗法成对，tiles vs VP9 动态节流）：
+
+| 场景 | tiles kbps | VP9 动态节流 kbps | 劣化倍数 |
+|---|---|---|---|
+| 静止（黑窗） | 0.6 | 1.1 | 0.55（tiles 优） |
+| 10Hz 小区域（时间戳终端） | 27.0 | 12.7 | **2.1x** |
+| IDE 真实桌面（Trae 编辑） | 48.0 | 11.3 | **4.2x** |
+
+**原因**：VPX（VP9）帧内预测 + 帧间预测已经把大量 tile 间的时间/空间冗余吃掉；协议层再做 tile 粒度差分遇到的是 VPX 没吃掉的真正高频细节（光标边缘、像素栅格），XOR 后熵仍高。Windows/WebRTC/Texture 直传等**不走 VPX 编码的路径**或有独立价值，但 X11+VPX 路径上协议级差分纯粹是旁路。
+
+代码已整体回退（proto/协商/收发路径未保留），详细数据存档于 `docs/specs/tile-rect-incremental/{spec,results}.md`。本 Phase 在 X11+VPX 路径上终止。
+
+---
+
+### Phase 5：Viewer 挂起 + 断线增量恢复（流量省 + 体验优，预计 2 周）
+
+#### 3.5.1 动机
+
+RustDesk 最大的运行成本是 **中继流量**：viewer 窗口最小化 / 失焦 / App 后台时，视频帧仍持续推送；链路时断时通时客户端重新走完整登录流程，冷启动 encoder 有明显延迟。当前 QoS 的 per-user custom_fps 只参与全局 encoder fps 计算，不控制 per-viewer 的视频接收。
+
+#### 3.5.2 目标
+
+| 场景 | 当前 | 目标 |
+|---|---|---|
+| Desktop 窗口最小化 | 正常帧 | 停帧，只保活 |
+| Desktop 失焦 / Alt+Tab | 正常帧 | 低 fps（默认 5） |
+| Mobile App 退后台 | 正常帧 | 停帧 |
+| 用户 N 秒无输入（空闲） | 正常帧 | 失焦同 |
+| 闪断（< 30s） | 客户端弹重连 UI，服务端重建 encoder | 自动恢复，服务端不重建 encoder |
+| 彻底断（> 30s） | 从头起 | 同当前（强制重连） |
+
+#### 3.5.3 架构
+
+**客户端**：已有 `onWindowMinimize` / `onWindowBlur` / `AppLifecycleState` 钩子（desktop 在 `flutter/lib/desktop/pages/remote_page.dart:480-630`，mobile 在 `flutter/lib/mobile/pages/remote_page.dart:224`）。新增 `_setViewerActivity(ViewerActivity)` 向服务端发送 `OptionMessage.custom_fps` 表示想要的接收频率。**客户端需放开 `custom_fps < 5 => 30` 的钳制**（`src/client/io_loop.rs:1560`），允许 0/1/2/3/4。
+
+**服务端 per-viewer 丢帧**：不改 encoder——encoder 按 QoS.fps() 全局编码。改 `send_video_frame_shared`（`src/server/service.rs:235`）遍历 Subscriber 时，**查每个 viewer 的显式 fps target**，决定这帧要不要真的 send。VideoQoS 新增 per-user `explicit_fps` 字段（与自适应 fps_cap 解耦），`user_fps_target(id)` 返回该值，0 表示"正常接收"，>0 表示 viewer 主动想要该 fps。
+
+**Subscriber 层实现**：VideoService 改用包一层的 `VideoSubscriber { inner: ConnInner, drop_state: AtomicU32 }`，每个 Subscriber 有独立帧跳过计数器。Viewer explicit_fps=1、encoder fps=30 → 每 30 帧发 1 帧。
+
+**断线增量恢复**：复用服务端已有的 `HIBERNATE_TIMEOUT = 30s`（`src/server/service.rs:44`），让 encoder 在最后一个订阅者断开后保留 30s。客户端带着同一个 `session_key` 在 30s 内重连时，跳过完整 subscribe 重置。
+
+#### 3.5.4 协议与消息
+
+**不新增 proto 字段**。全部走 `OptionMessage.custom_fps` 复用现有入口：
+
+| custom_fps | 语义 |
+|---|---|
+| 0 | 恢复 UI 设置的原始 fps（reset） |
+| 1 | 保活模式（挂起 / 后台 / 最小化） |
+| 5 | 失焦 / Alt+Tab（默认，可配） |
+| 30（或用户设置） | 正常接收 |
+
+#### 3.5.5 改动清单
+
+| 文件 | 类型 | 行数 |
+|---|---|---|
+| `docs/specs/viewer-suspend/spec.md` | **新建**（本文档） | 完整 spec |
+| `libs/scrap/src/common/vpxcodec.rs` | 新增 `encode_keyframe` 重载（flags=VPX_EFLAG_FORCE_KF） | ~20 |
+| `libs/scrap/src/common/aomcodec.rs` | 同上（AV1/AOM 编码器） | ~20 |
+| `src/server/video_service/video_sub.rs` | **新建** VideoSubscriber | ~25 |
+| `src/server/video_service.rs` | send_video_frame_shared per-viewer drop + VideoFrameController.force_keyframe | ~30 |
+| `src/server/video_qos.rs` | UserData 加 explicit_fps；新增 user_fps_target | ~40 |
+| `src/server/connection.rs` | custom_fps 喂 QoS；session_key buffer；快速登录 | ~40 |
+| `src/server/service.rs` | VideoService subscriber 断开 HIBERNATE_BUFFER | ~15 |
+| `src/client/io_loop.rs:1560` | 放开 custom_fps<5 钳制 | ~5 |
+| `src/client/io_loop.rs` | handle_disconnected 增量恢复分支 | ~30 |
+| `flutter/lib/desktop/pages/remote_page.dart` | _setViewerActivity + 空闲 watcher | ~80 |
+| `flutter/lib/mobile/pages/remote_page.dart` | 同上 | ~40 |
+| `libs/base/src/config/keys.rs` | 新增 9 个配置键 | ~9 |
+| `src/lang/template.rs` + `src/lang/*.rs` | 追加翻译项 | 自动 |
+
+#### 3.5.6 配置键
+
+| 键 | 默认 | 语义 |
+|---|---|---|
+| `enable-viewer-suspend` | true | 总开关 |
+| `suspend-on-minimize` | true | 窗口最小化挂起 |
+| `suspend-on-background` | true | App 后台挂起 |
+| `suspend-on-blur` | true | 失焦降 fps |
+| `suspend-blur-fps` | 5 | 失焦 fps |
+| `suspend-idle-enable` | true | 空闲挂起 |
+| `suspend-idle-seconds` | 120 | 空闲判定秒数 |
+| `suspend-minimize-fps` | 1 | 最小化 fps（1=保活，0=停帧） |
+| `reconnect-buffer-seconds` | 30 | 增量重连窗口 |
+
+#### 3.5.7 依赖关系
+
+与所有其他 Phase 独立。**在 Phase 3.1.6 动态节流之上叠加**——节流管 encoder 输出 bitrate，本 Phase 管 viewer 接收频率，两者完全正交。
+
 ---
 
 ## 四、依赖关系与优先级
 
 ```
-Phase 1 (帧差分)  ────────────────────────────── 独立, 最高优先级
+Phase 3.1.6 (动态节流) ─── 已实施，实测通过 (e8885edc9)
     │
-    ├── Phase 4 (自研压缩) ────── 依赖 1, 可并行
+    ├── Phase 4 (协议级 tile 增量) ── 2026-11-05 证伪回退（X11+VPX 路径收益为负）
     │
-Phase 2 (视频 FEC)  ──────────────────────────── 独立, 高优先级
+    ├── Phase 5 (Viewer 挂起 + 增量重连) ── 独立，与节流正交，预计 2 周 ← 下一阶段
     │
-Phase 3 (MTU 探测)  ──────────────────────────── 独立, 低优先级
+    ├── Phase 2 (FEC 弱网) ──────── 2026-11-05 证伪（TCP 路径无应用层 FEC 空间；仅 UDP relay 适用）
+    │
+    └── Phase 3 (动态 MTU 探测) ─── 仅 UDP/KCP 路径；直连 TCP 无需要；搁置
 ```
 
-**建议实施顺序**：Phase 1 → Phase 2 → Phase 3 → Phase 4
+**当前活跃优先级**：Phase 5（Viewer 挂起 + 增量重连）。其余 Phase 状态已标注。
 
 ---
 
 ## 五、每阶段验证清单
 
-### Phase 1 验收
+### Phase 1（帧差分 / 自研 Diff）——搁置
 
-- [ ] 静止画面 (1080p) 带宽 < 1 KB/s
-- [ ] 光标移动带宽 < 1 KB
-- [ ] 旧客户端连接新服务端正常工作
-- [ ] 新客户端连接旧服务端正常工作
+未实施。Phase 4（协议级 tile 增量）和 Phase 3.1.6（小变化动态节流）已覆盖静止画面带宽优化的主要目标。
+
+### Phase 2（FEC 弱网）——2026-11-05 证伪
+
+见 3.2.5。TCP 路径上应用层 FEC 无收益；KCP/relay 路径暂缓评估。
+
+### Phase 3（MTU 探测）——搁置
+
+见 3.3.0。TCP 路径不需要；UDP 路径待 relay 环境。
+
+### Phase 4（协议级 tile 增量帧）——2026-11-05 证伪回退
+
+见 3.4.4。X11+VPX 路径收益为负，整体回退，存档于 `docs/specs/tile-rect-incremental/`。
+
+### Phase 3.1.6（小变化动态节流）——已验收
+
+- [x] 静止黑窗：基线 32.6 kbps → 节流后 1.1 kbps（~30x）
+- [x] 10Hz 时间戳小变化：32.6 → 12.7 kbps（~2.6x）
+- [x] 无任何回归（cargo test / 双机重连 / 渲染正确）
+
+### Phase 5（Viewer 挂起 + 增量重连）——待验收
+
+- [ ] Desktop 窗口最小化 30s → viewer 帧流量降到 ~0 或 ~1 fps
+- [ ] Desktop 失焦 / Alt+Tab 1min → viewer 接收 ≤ 5fps
+- [ ] Mobile App 后台 30s → 帧流量 0，TestDelay 继续
+- [ ] 空闲挂起：鼠标不动 120s 后自动进入低 fps，移动鼠标立即恢复
+- [ ] 闪断（< 30s）：客户端不弹重连 UI，服务端 encoder 不重建
+- [ ] 彻底断（> 30s）：行为与当前一致（强制重连）
+- [ ] 关闭 `enable-viewer-suspend` 后，行为与 master 完全一致（零回归）
 - [ ] `cargo test --workspace` 全绿
-- [ ] 无明显 CPU 回退（diff 耗时 < 5% 编码耗时）
-
-### Phase 2 验收
-
-- [ ] netem 5% 丢包下画面流畅
-- [ ] netem 1% 丢包下花屏完全消失
-- [ ] FEC 开启时带宽增加 ≤ 25%（冗余率可控）
-- [ ] 关闭 FEC 时行为与改造前一致
-
-### Phase 3 验收
-
-- [ ] MTU 探测在典型路径上能正确发现值 (通常 1400-1472)
-- [ ] 分片场景下丢包率明显降低
-- [ ] 探测阶段不超过 5 秒
+- [ ] 双 viewer 混合场景：viewer1 挂起 / viewer2 正常 → viewer2 不受影响
 
 ### 阶段间回归
 

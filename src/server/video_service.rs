@@ -56,7 +56,7 @@ use std::io::ErrorKind::ConnectionReset;
 #[cfg(windows)]
 use std::sync::Once;
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     io::ErrorKind::WouldBlock,
     ops::{Deref, DerefMut},
     time::{self, Duration, Instant},
@@ -135,6 +135,17 @@ lazy_static::lazy_static! {
     pub static ref IS_UAC_RUNNING: Arc<Mutex<bool>> = Default::default();
     pub static ref IS_FOREGROUND_WINDOW_ELEVATED: Arc<Mutex<bool>> = Default::default();
     static ref SCREENSHOTS: Mutex<HashMap<(VideoSource, usize), Screenshot>> = Default::default();
+    /// One-shot flag set by `connection.rs` when a viewer resumes from suspend.
+    /// The encoder reads + clears it on the next encode cycle, and if set,
+    /// forces a keyframe so the resumed viewer doesn't wait for the next
+    /// natural keyframe interval.
+    pub static ref FORCE_KEYFRAME: std::sync::atomic::AtomicBool =
+        std::sync::atomic::AtomicBool::new(false);
+    /// Monotonic per-encode-frame counter. Used by `send_video_frame_to_subscribers`
+    /// together with `VIDEO_QOS.user_fps_target()` to decide which frames each
+    /// subscriber actually receives (per-viewer fps drop).
+    pub static ref FRAME_IDX: std::sync::atomic::AtomicU64 =
+        std::sync::atomic::AtomicU64::new(0);
 }
 
 struct Screenshot {
@@ -592,6 +603,50 @@ fn get_capturer(
         VideoSource::Monitor => get_capturer_monitor(current, portable_service_running),
         VideoSource::Camera => get_capturer_camera(current),
     }
+}
+
+/// Per-subscriber video frame send. Unlike `GenericService::send_video_frame`,
+/// this respects `VIDEO_QOS.user_fps_target()` — subscribers with an explicit
+/// low-fps request (suspended / blurred / idle) only receive every N-th frame.
+/// Returns the set of conn ids that actually got the frame.
+fn send_video_frame_to_subscribers(sp: &GenericService, msg: Message) -> HashSet<i32> {
+    let msg = Arc::new(msg);
+    let frame_idx = FRAME_IDX
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed) as u64;
+
+    // Snapshot encoder fps once so we don't thrash QOS lock per-subscriber.
+    let encoder_fps: u64 = VIDEO_QOS.lock().unwrap().fps().max(1) as u64;
+
+    // Collect subscriber ids first — QOS + service lock must never nest.
+    let ids: Vec<i32> = {
+        let mut v = Vec::new();
+        sp.for_each_subscribe_mut(|id, _| v.push(id));
+        v
+    };
+
+    // QOS-only pass: map each subscriber id to its explicit fps target.
+    let fps_targets: HashMap<i32, u64> = {
+        let qos = VIDEO_QOS.lock().unwrap();
+        ids.iter()
+            .copied()
+            .map(|id| (id, qos.user_fps_target(id) as u64))
+            .collect()
+    };
+
+    // Service-only pass: apply per-viewer drop, then send.
+    let mut sent = HashSet::new();
+    sp.for_each_subscribe_mut(|id, sub| {
+        let target = fps_targets.get(&id).copied().unwrap_or(0);
+        if target > 0 && target < encoder_fps {
+            let skip = encoder_fps / target.max(1);
+            if frame_idx % skip != 0 {
+                return;
+            }
+        }
+        sub.send(msg.clone());
+        sent.insert(id);
+    });
+    sent
 }
 
 fn run(vs: VideoService) -> ResultType<()> {
@@ -1405,7 +1460,12 @@ fn handle_one_frame(
     let mut vpx_no_output = false;
     let first = *first_frame;
     *first_frame = false;
-    match encoder.encode_to_message(frame, ms) {
+    // Read + clear the one-shot force-keyframe flag before encoding so only
+    // the very next frame (not all subsequent frames) is forced.
+    let force_kf = FORCE_KEYFRAME
+        .compare_exchange(true, false, std::sync::atomic::Ordering::AcqRel, std::sync::atomic::Ordering::Relaxed)
+        .is_ok();
+    match encoder.encode_to_message(frame, ms, force_kf) {
         Ok(mut vf) => {
             *encode_fail_counter = 0;
             *encoder_warmed_up = true;
@@ -1417,7 +1477,7 @@ fn handle_one_frame(
                 .unwrap()
                 .as_mut()
                 .map(|r| r.write_message(&msg, width, height));
-            send_conn_ids = sp.send_video_frame(msg);
+            send_conn_ids = send_video_frame_to_subscribers(&sp, msg);
         }
         Err(e) => {
             vpx_no_output = e.is::<scrap::VpxNoOutput>();

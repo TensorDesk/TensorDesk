@@ -29,7 +29,12 @@ impl EncoderApi for ScriptedEncoder {
     fn new(_: EncoderCfg, _: bool) -> ResultType<Self> {
         unreachable!()
     }
-    fn encode_to_message(&mut self, input: EncodeInput, _: i64) -> ResultType<VideoFrame> {
+    fn encode_to_message(
+        &mut self,
+        input: EncodeInput,
+        _: i64,
+        _force_keyframe: bool,
+    ) -> ResultType<VideoFrame> {
         let mut state = self.0.borrow_mut();
         state.calls += 1;
         if let EncodeInput::YUV(yuv) = input {

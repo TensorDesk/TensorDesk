@@ -97,7 +97,9 @@ impl EncoderApi for VRamEncoder {
         &mut self,
         frame: EncodeInput,
         ms: i64,
+        force_keyframe: bool,
     ) -> ResultType<base::message_proto::VideoFrame> {
+        let _ = force_keyframe; // VRam encoder: force-keyframe not wired yet.
         #[cfg(all(windows, feature = "vram"))]
         let repeated = matches!(&frame, EncodeInput::Repeat);
         #[cfg(not(all(windows, feature = "vram")))]

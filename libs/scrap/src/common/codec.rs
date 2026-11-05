@@ -62,7 +62,12 @@ pub trait EncoderApi {
     where
         Self: Sized;
 
-    fn encode_to_message(&mut self, frame: EncodeInput, ms: i64) -> ResultType<VideoFrame>;
+    fn encode_to_message(
+        &mut self,
+        frame: EncodeInput,
+        ms: i64,
+        force_keyframe: bool,
+    ) -> ResultType<VideoFrame>;
 
     fn yuvfmt(&self) -> EncodeYuvFormat;
 
