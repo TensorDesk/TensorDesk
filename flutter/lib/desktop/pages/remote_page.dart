@@ -41,16 +41,15 @@ enum ViewerActivity {
   /// Normal: every encoder frame is sent to this viewer.
   foreground,
 
-  /// Window lost focus / Alt+Tab. Frame rate drops to `suspend-blur-fps`
-  /// (default 5) to save bandwidth while keeping the session responsive.
+  /// Window lost focus / Alt+Tab. Treated as suspended: no frames are sent
+  /// until focus returns.
   blurred,
 
-  /// Window minimized or app backgrounded. Frame rate drops to
-  /// `suspend-minimize-fps` (default 1 — keep-alive) to minimize relay usage.
+  /// Window minimized or app backgrounded. No frames are sent until restored.
   suspended,
 
-  /// User has not produced input events for `suspend-idle-seconds`.
-  /// Treated the same as `blurred`.
+  /// User has not produced input for [_kIdleThresholdSeconds]. Treated as
+  /// suspended; the next input restores the stream.
   inactive,
 }
 
@@ -732,11 +731,15 @@ class _RemotePageState extends State<RemotePage>
     // Poll every second — cheap, keeps the transition responsive.
     _idleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      if (_viewerActivity != ViewerActivity.foreground) return;
       if (!_idleSuspendEnabled) return;
-      final elapsed = DateTime.now().difference(_lastInputAt ?? DateTime.now());
-      if (elapsed.inSeconds >= _kIdleThresholdSeconds) {
+      final last =
+          _ffi.inputModel.lastInputAt ?? _lastInputAt ?? DateTime.now();
+      final idle = DateTime.now().difference(last).inSeconds >=
+          _kIdleThresholdSeconds;
+      if (idle && _viewerActivity == ViewerActivity.foreground) {
         _setViewerActivity(ViewerActivity.inactive);
+      } else if (!idle && _viewerActivity == ViewerActivity.inactive) {
+        _setViewerActivity(ViewerActivity.foreground);
       }
     });
   }

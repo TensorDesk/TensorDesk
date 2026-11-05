@@ -185,11 +185,7 @@ pub const OPTION_ENABLE_VIEWER_SUSPEND: &str = "enable-viewer-suspend";
 pub const OPTION_SUSPEND_ON_MINIMIZE: &str = "suspend-on-minimize";
 pub const OPTION_SUSPEND_ON_BACKGROUND: &str = "suspend-on-background";
 pub const OPTION_SUSPEND_ON_BLUR: &str = "suspend-on-blur";
-pub const OPTION_SUSPEND_BLUR_FPS: &str = "suspend-blur-fps";
 pub const OPTION_SUSPEND_IDLE_ENABLE: &str = "suspend-idle-enable";
-pub const OPTION_SUSPEND_IDLE_SECONDS: &str = "suspend-idle-seconds";
-pub const OPTION_SUSPEND_MINIMIZE_FPS: &str = "suspend-minimize-fps";
-pub const OPTION_RECONNECT_BUFFER_SECONDS: &str = "reconnect-buffer-seconds";
 
 pub const OPTION_DISABLE_GROUP_PANEL: &str = "disable-group-panel";
 pub const OPTION_DISABLE_DISCOVERY_PANEL: &str = "disable-discovery-panel";

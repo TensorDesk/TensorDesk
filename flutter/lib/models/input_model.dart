@@ -490,6 +490,10 @@ class InputModel {
   // It should not block physical keyboard events.
   bool keyboardInputAllowed = true;
 
+  /// Time of the last user input forwarded to the peer. The remote pages read
+  /// this to detect an idle viewer; null until the first input of the session.
+  DateTime? lastInputAt;
+
   bool get keyboardPerm => parent.target!.ffiModel.keyboard;
   String get id => parent.target?.id ?? '';
   String? get peerPlatform => parent.target?.ffiModel.pi.platform;
@@ -748,6 +752,7 @@ class InputModel {
   }
 
   KeyEventResult handleRawKeyEvent(RawKeyEvent e) {
+    lastInputAt = DateTime.now();
     if (_localFlutterShortcuts.tryDispatchRaw(e)) return KeyEventResult.handled;
     if (isViewOnly) {
       if (isWeb && !isInputSourceFlutter) return KeyEventResult.ignored;
@@ -844,6 +849,7 @@ class InputModel {
   }
 
   KeyEventResult handleKeyEvent(KeyEvent e) {
+    lastInputAt = DateTime.now();
     if (_localFlutterShortcuts.tryDispatch(e)) return KeyEventResult.handled;
     if (isViewOnly) {
       if (isWeb && !isInputSourceFlutter) return KeyEventResult.ignored;
@@ -1342,6 +1348,7 @@ class InputModel {
   void inputKey(String name, {bool? down, bool? press}) {
     if (!keyboardPerm) return;
     if (isViewCamera) return;
+    lastInputAt = DateTime.now();
     bind.sessionInputKey(
         sessionId: sessionId,
         name: name,
@@ -1416,6 +1423,7 @@ class InputModel {
   /// Send scroll event with scroll distance [y].
   Future<void> scroll(int y) async {
     if (isViewCamera) return;
+    lastInputAt = DateTime.now();
     await bind.sessionSendMouse(
         sessionId: sessionId,
         msg: json
@@ -1441,6 +1449,7 @@ class InputModel {
   /// Used for side button releases that must go through even if permissions
   /// changed after the matching down was sent.
   Future<void> _sendMouseUnchecked(String type, MouseButtons button) async {
+    lastInputAt = DateTime.now();
     await bind.sessionSendMouse(
         sessionId: sessionId,
         msg: json.encode(modify({'type': type, 'buttons': button.value})));
@@ -2227,6 +2236,7 @@ class InputModel {
     bool moveCanvas = true,
     bool edgeScroll = false,
   }) {
+    lastInputAt = DateTime.now();
     final evtToPeer = processEventToPeer(evt, offset,
         onExit: onExit, moveCanvas: moveCanvas, edgeScroll: edgeScroll);
     if (evtToPeer != null) {

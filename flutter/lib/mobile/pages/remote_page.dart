@@ -274,11 +274,14 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     _idleTimer?.cancel();
     _idleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      if (_viewerActivity != ViewerActivity.foreground) return;
       if (!_idleSuspendEnabled) return;
-      final elapsed = DateTime.now().difference(_lastInputAt ?? DateTime.now());
-      if (elapsed.inSeconds >= _kIdleThresholdSeconds) {
+      final last = inputModel.lastInputAt ?? _lastInputAt ?? DateTime.now();
+      final idle = DateTime.now().difference(last).inSeconds >=
+          _kIdleThresholdSeconds;
+      if (idle && _viewerActivity == ViewerActivity.foreground) {
         _setViewerActivity(ViewerActivity.inactive);
+      } else if (!idle && _viewerActivity == ViewerActivity.inactive) {
+        _setViewerActivity(ViewerActivity.foreground);
       }
     });
   }
