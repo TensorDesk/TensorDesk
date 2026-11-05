@@ -1728,7 +1728,11 @@ fn handle_screenshot(screenshot: Screenshot, msg: String, w: usize, h: usize, da
 
 #[cfg(test)]
 mod tests {
-    use super::refresh_allowed;
+    use super::*;
+    use tokio::sync::mpsc::{self, UnboundedReceiver};
+
+    use crate::server::connection::ConnInner;
+    use crate::server::service::Service;
 
     #[test]
     fn refresh_waits_for_hw_encoder_warmup() {
@@ -1741,5 +1745,83 @@ mod tests {
         assert!(refresh_allowed(false, false, true));
         // Nothing fed yet: no warm-up to lose, and a refresh can restart a stalled capturer.
         assert!(refresh_allowed(true, false, false));
+    }
+
+    /// 挂起的 viewer 在 send_video_frame_to_subscribers 里收不到视频帧，
+    /// 正常 viewer 照常收到。
+    #[test]
+    fn send_video_frame_skips_suspended_viewers() {
+        // 清掉可能残留的旧 viewer 状态（VIDEO_QOS 是全局单例）
+        // 用一个全新的 VideoQoS 实例来避免与其他测试互相污染
+        {
+            let mut qos = VIDEO_QOS.lock().unwrap();
+            *qos = Default::default();
+        }
+
+        let sp = GenericService::new("test-drop".into(), false);
+
+        let (tx1, mut rx1) = mpsc::unbounded_channel();
+        let (tx2, mut rx2) = mpsc::unbounded_channel();
+
+        sp.on_subscribe(ConnInner::new(101, None, Some(tx1)));
+        sp.on_subscribe(ConnInner::new(102, None, Some(tx2)));
+
+        // 给两个 viewer 初始化 QoS（user_explicit_fps 需要已存在的 user）
+        {
+            let mut qos = VIDEO_QOS.lock().unwrap();
+            qos.on_connection_open(101);
+            qos.on_connection_open(102);
+            // viewer 101 挂起（非零 explicit_fps 即挂起）
+            qos.user_explicit_fps(101, 1);
+        }
+
+        for _ in 0..10 {
+            let mut msg = Message::new();
+            msg.set_video_frame(VideoFrame::new());
+            send_video_frame_to_subscribers(&sp, msg);
+        }
+
+        assert_eq!(
+            drain_count(&mut rx1),
+            0,
+            "suspended viewer 101 should receive zero frames"
+        );
+        assert_eq!(
+            drain_count(&mut rx2),
+            10,
+            "normal viewer 102 should receive all 10 frames"
+        );
+
+        // 恢复 viewer 101，挂起 viewer 102 → 验证状态切换生效
+        {
+            let mut qos = VIDEO_QOS.lock().unwrap();
+            qos.user_explicit_fps(101, 0);
+            qos.user_explicit_fps(102, 1);
+        }
+
+        for _ in 0..5 {
+            let mut msg = Message::new();
+            msg.set_video_frame(VideoFrame::new());
+            send_video_frame_to_subscribers(&sp, msg);
+        }
+
+        assert_eq!(
+            drain_count(&mut rx1),
+            5,
+            "viewer 101 should resume receiving after explicit_fps cleared"
+        );
+        assert_eq!(
+            drain_count(&mut rx2),
+            0,
+            "viewer 102 should stop receiving after being suspended"
+        );
+    }
+
+    fn drain_count<T>(rx: &mut UnboundedReceiver<T>) -> usize {
+        let mut n = 0;
+        while rx.try_recv().is_ok() {
+            n += 1;
+        }
+        n
     }
 }
