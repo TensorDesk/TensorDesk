@@ -85,6 +85,14 @@ class RemotePage extends StatefulWidget {
   State<RemotePage> createState() => _RemotePageState(id);
 }
 
+/// Mobile-side viewer activity mirror of the desktop enum in
+/// `flutter/lib/desktop/pages/remote_page.dart`. Kept local so the mobile
+/// page does not need to import from the desktop-only tree.
+enum ViewerActivity { foreground, blurred, suspended, inactive }
+
+const _kMinimizeFps = 1;
+const _kBlurFps = 5;
+
 class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   Timer? _timer;
   bool _showBar = !isWebDesktop;
@@ -93,6 +101,13 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   Orientation? _currentOrientation;
   final _uniqueKey = UniqueKey();
   Timer? _iosKeyboardWorkaroundTimer;
+
+  // === Phase 5: viewer suspend state ===
+  ViewerActivity _viewerActivity = ViewerActivity.foreground;
+  DateTime? _lastInputAt;
+  Timer? _idleTimer;
+  bool _idleSuspendEnabled = false;
+  int _idleThresholdSeconds = 120;
 
   final _blockableOverlayState = BlockableOverlayState();
 
@@ -166,6 +181,19 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     });
     WidgetsBinding.instance.addObserver(this);
 
+    // === Phase 5: idle watcher initialization ===
+    final enableSuspend =
+        bind.sessionGetToggleOptionSync(sessionId: sessionId, arg: 'enable-viewer-suspend');
+    if (enableSuspend) {
+      _idleSuspendEnabled =
+          bind.sessionGetToggleOptionSync(sessionId: sessionId, arg: 'suspend-idle-enable');
+      final seconds =
+          bind.sessionGetOptionSync(sessionId: sessionId, arg: 'suspend-idle-seconds') ?? 120;
+      _idleThresholdSeconds = seconds.clamp(30, 600);
+      _lastInputAt = DateTime.now();
+      _startIdleTimer();
+    }
+
     inputModel.keyboardInputAllowed = true;
 
     // Wayland sessions may use clipboard-based text input on the controlled side.
@@ -208,6 +236,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     await gFFI.close();
     _timer?.cancel();
     _iosKeyboardWorkaroundTimer?.cancel();
+    _idleTimer?.cancel();
+    _idleTimer = null;
     gFFI.dialogManager.dismissAll();
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
         overlays: SystemUiOverlay.values);
@@ -224,6 +254,49 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       trySyncClipboard();
+      _markInput();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      if (bind.sessionGetToggleOptionSync(
+          sessionId: sessionId, arg: 'suspend-on-background')) {
+        _setViewerActivity(ViewerActivity.suspended);
+      }
+    }
+  }
+
+  // === Phase 5: viewer suspend core (mobile) ===
+
+  void _setViewerActivity(ViewerActivity activity) {
+    if (!mounted) return;
+    if (activity == _viewerActivity) return;
+    _viewerActivity = activity;
+    final fps = switch (activity) {
+      ViewerActivity.foreground => 0,
+      ViewerActivity.blurred => _kBlurFps,
+      ViewerActivity.inactive => _kBlurFps,
+      ViewerActivity.suspended => _kMinimizeFps,
+    };
+    bind.sessionSetCustomFps(sessionId: sessionId, fps: fps);
+  }
+
+  void _startIdleTimer() {
+    _idleTimer?.cancel();
+    _idleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_viewerActivity != ViewerActivity.foreground) return;
+      if (!_idleSuspendEnabled) return;
+      final elapsed = DateTime.now().difference(_lastInputAt ?? DateTime.now());
+      if (elapsed.inSeconds >= _idleThresholdSeconds) {
+        _setViewerActivity(ViewerActivity.inactive);
+      }
+    });
+  }
+
+  void _markInput() {
+    _lastInputAt = DateTime.now();
+    if (_viewerActivity != ViewerActivity.foreground &&
+        _viewerActivity != ViewerActivity.suspended) {
+      _setViewerActivity(ViewerActivity.foreground);
     }
   }
 
