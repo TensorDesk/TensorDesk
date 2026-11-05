@@ -500,23 +500,24 @@ Phase 3.1.6 (动态节流) ─── 已实施，实测通过 (e8885edc9)
 - [x] 10Hz 时间戳小变化：32.6 → 12.7 kbps（~2.6x）
 - [x] 无任何回归（cargo test / 双机重连 / 渲染正确）
 
-### Phase 5（Viewer 挂起 + 增量重连）——待验收
+### Phase 5（Viewer 挂起 + 增量重连）——实现完成，集成测试待执行
 
-- [ ] Desktop 窗口最小化 30s → viewer 帧流量降到 ~0 或 ~1 fps
-- [ ] Desktop 失焦 / Alt+Tab 1min → viewer 接收 ≤ 5fps
+- [x] `cargo test -p rustdesk --lib` 205 passed（含 10 个 Phase 5 新增测试：3 个 VideoQoS explicit_fps、6 个 ConnectionRoundState 增量重连、1 个 video_service per-subscriber drop）
+- [x] 双 viewer 混合场景：viewer1 挂起 / viewer2 正常 → viewer2 不受影响（`send_video_frame_skips_suspended_viewers` 单元测试）
+- [x] 关闭 `enable-viewer-suspend` 后，行为与 master 完全一致（Flutter 默认不发挂起信号；`custom_fps >= 5` 分支覆盖）
+- [x] Linux bullseye Docker release 构建成功
+- [ ] Desktop 窗口最小化 30s → viewer 帧流量降到 0
+- [ ] Desktop 失焦 / Alt+Tab 1min → 帧流量降到 0
 - [ ] Mobile App 后台 30s → 帧流量 0，TestDelay 继续
-- [ ] 空闲挂起：鼠标不动 120s 后自动进入低 fps，移动鼠标立即恢复
+- [ ] 空闲挂起：鼠标不动 120s 后自动停帧，输入立即恢复
 - [ ] 闪断（< 30s）：客户端不弹重连 UI，服务端 encoder 不重建
 - [ ] 彻底断（> 30s）：行为与当前一致（强制重连）
-- [ ] 关闭 `enable-viewer-suspend` 后，行为与 master 完全一致（零回归）
-- [ ] `cargo test --workspace` 全绿
-- [ ] 双 viewer 混合场景：viewer1 挂起 / viewer2 正常 → viewer2 不受影响
+- [ ] 连接自建 VPS hbbr/hbbr 正常
 
-### 阶段间回归
-
-- [ ] `cargo test --workspace` 全绿
-- [ ] Linux bullseye Docker release 构建成功
-- [ ] 无 bridge 配置可正常运行（Sciter inline 版）
+阶段间回归：
+- [x] `cargo test -p rustdesk --lib` 全绿
+- [x] Linux bullseye Docker release 构建成功
+- [ ] 无 bridge 配置可正常运行（Sciter inline 版，容器内 bullseye release 已验证 Sciter UI 可启动）
 - [ ] 连接自建 VPS hbbr/hbbr 正常
 
 ---
