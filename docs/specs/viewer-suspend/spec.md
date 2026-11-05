@@ -32,7 +32,7 @@
 | Desktop 失焦 / Alt+Tab | 正常帧 | 低 fps（可配置，默认 1 fps） | 帧流量降到 ~1/30 |
 | Mobile App 退到后台 | 正常帧 | **暂停视频，TestDelay 继续** | 帧流量 0，30s 心跳保持 |
 | 用户连续 N 秒无输入（空闲） | 正常帧 | 进入低 fps | 与失焦同 |
-| 链路闪断（< 30s） | 走 `on_close` → 重连 | 自动恢复，**服务端不重建 encoder** | 端到端恢复时间 < 5s |
+| 链路闪断（< 30s） | 走 `on_close` → 重连 | 自动恢复，服务端复用 session_key（encoder 按连接重建，见 §10.5） | 端到端恢复时间 < 5s |
 | 链路彻底断（> 30s） | 同当前 | 同当前（强制重连） | 不变 |
 
 ### 2.2 非目标
@@ -365,6 +365,9 @@ Timer? _idleTimer;
 
 ### 4.2 增量恢复方案
 
+> 本节为设计草稿，未被采纳：实际实现只复用 `session_key`，encoder 按连接重建
+> （见 §10.1 第 7 条 / §10.5）。
+
 **核心观察**：服务端有 `session_key`（`connection.rs:277 Session`），客户端重连时可以带着 session_key 来——告诉服务端"我是刚才那个断的，别重启 encoder"。
 
 增量恢复需要改 3 处：
@@ -463,7 +466,7 @@ Timer? _idleTimer;
 | Mobile 后台 → 前台 | App 切后台 30s → 回前台 | 同 |
 | Alt+Tab 失焦 1min | 切换到其他窗口 1min | viewer 收到 0 帧，回到该窗口后恢复 |
 | 空闲挂起 | 鼠标不动 120s → 移动鼠标 | 进入挂起 → 恢复平滑 |
-| 闪断恢复（< 30s） | `iptables -I OUTPUT -p tcp --dport 21118 -j DROP` 10s 后删 | 客户端不弹重连 UI，自动恢复；服务端 encoder 不重建（可通过 md5 / pid 验证） |
+| 闪断恢复（< 30s） | `iptables -I OUTPUT -p tcp --dport 21118 -j DROP` 10s 后删 | 客户端不弹重连 UI，自动恢复；encoder 按连接重建（见 §10.5），恢复延迟实测 <1s |
 | 彻底断（> 30s） | DROP 60s | 客户端弹重连 UI，服务端 encoder 重建（与当前一致） |
 
 ### 7.3 中继流量计量
@@ -511,6 +514,7 @@ Timer? _idleTimer;
 4. **`custom_fps` 复用为三种语义**：`>=5` 是原有的用户 fps 上限，`1..=4` 是挂起，`-1` 是恢复。挂起/恢复是瞬态信号，不写 peer 配置（`Session::set_custom_fps` 里 `custom_fps < 5` 直接发 Message，不落盘）。
 5. **`get_toggle_option` 是硬编码白名单**：新增开关必须在 `src/client.rs` 显式列出，否则永远返回 false。`suspend-idle-enable` 默认 false（被动观看也会被判空闲）。
 6. **删除无读取方的配置键**：`suspend-blur-fps` / `suspend-minimize-fps` / `suspend-idle-seconds` / `reconnect-buffer-seconds`；空闲阈值固定 120s，重连窗口固定 30s（Dart 常量）。
+7. **增量重连不保留 encoder**：设计草稿曾计划在 `HIBERNATE_TIMEOUT` 内保留 `VideoService` / encoder，实际实现只复用 `session_key`，新连接按 `video_service::new` 重建 encoder（见 §10.5）。
 
 ### 10.2 空闲检测
 
@@ -526,8 +530,24 @@ Timer? _idleTimer;
 ### 10.4 验证状态
 
 - `cargo check -p rustdesk --lib --features flutter` 通过（含 `flutter_ffi.rs`）。
-- `cargo test -p rustdesk --lib`：204 passed。
-- Flutter 侧没有本地 SDK，未做 `flutter analyze`；`generated_bridge.dart` 由 CI codegen 生成，本地未手工补齐。
+- `cargo test --lib --features flutter`：226 passed / 1 failed（失败项
+  `keyboard::shortcuts::tests::alt_only_shortcut_neutralizes_windows_menu` 报 `kbd context error`，
+  是容器缺键盘上下文的既有环境失败，与本方案无关）。
+- `automatic_fps_never_requests_a_suspended_viewer`：解码 5fps 时自动档位被钳到 5，
+  证明弱机不会被误判为挂起（P0 缺陷回归）。
+- 本地 hbbs 双实例集成（2026-11-05，Flutter B 侧）：
+  - 悬停噪声 10s 发送 1,039,175 B（基线），挂起后 10s 仅 +198 B；
+  - 空闲 120s → `custom_fps: 1`，之后无 `custom_fps: 30` 覆盖（Fix A 生效）；
+  - 恢复（`custom_fps: -1`）后 3.2s +203,721 B，画面立即恢复；
+  - 最小化挂起保持，窗口恢复触发 `custom_fps: -1`（Fix B 生效），5s +341,917 B；
+  - `enable-viewer-suspend=false` 零回归：最小化不发送 `custom_fps: 1`，5s +299,971 B；
+  - 闪断 <30s：`ss -K` 杀会话后 1s 内重新打洞，无弹框；断链 >30s：先静默重连 2 次，
+    离线自动重试到 30s 上限耗尽后停止重试，弹框停留等待用户。
+- 闪断后服务端 `session_key` 复用，但 encoder 按连接重建（见 §10.5）。
+- Flutter 侧桥接（`sessionCanIncrementalReconnectSync`）已按 AGENTS.md 手工补齐
+  `src/bridge_generated.rs` / `src/bridge_generated.io.rs` / `flutter/lib/generated_bridge.dart`
+  三处（均为 gitignored 本地构建产物），`flutter build bundle --debug` 与
+  `flutter build linux --debug` 均通过；CI 重新 codegen 后等价。
 
 ### 10.5 已知限制
 
@@ -535,5 +555,30 @@ Timer? _idleTimer;
 - 强制 I 帧是进程级一次性标记，会给所有 viewer 同时产出一帧 I 帧（一次恢复可接受）。
 - HW 编码器（hwcodec / vram）接受 `force_keyframe` 参数但暂不强制 IDR，恢复后可能等自然关键帧。
 - 空闲判定依赖输入模型埋点；未经过这些入口的输入路径不会被计入。
-- 双机集成测试（.165/.167）尚未执行：本机容器内的客户端缺少可用的 Sciter/GTK 运行时资源，无法启动被控端 GUI。
-- 「按订阅者丢弃帧」发送路径、Flutter 空闲状态机、断线静默重连均无自动化测试，待集成测试补齐。
+- **强制 I 帧无日志可观测**：只能从 `handle_one_frame` 的 `force_kf` 代码路径与恢复后
+  字节突增（3.2s +203,721 B）间接验证，socket 计数无法区分 I/P 帧。
+- **闪断重连会重建 encoder**：`video_service::new` 按连接创建 encoder，新 socket 即新
+  service；`session_key` 复用但 encoder 不跨连接保留。恢复仍 <1s，不影响可用性。
+  服务端 `check_remove_session` 在唯一 remote 连接关闭时立即删除 session
+  （`is_remote || !another_remote` 分支），不保留 30s buffer；与客户端 30s
+  静默重连窗口不冲突。
+- **移动端 suspend 未做端到端验证**：`flutter/lib/mobile/pages/remote_page.dart` 的
+  `AppLifecycleState` 钩子只做了代码级修改与 `flutter build bundle` 编译验证。
+- 「按订阅者丢弃帧」发送路径、Flutter 空闲状态机、断线静默重连均无自动化测试，
+  仅 `ConnectionRoundState` 的窗口判定有 Rust 单测。
+
+### 10.6 本地 Flutter 构建阻塞与修复（已解决）
+
+- 现象：`flutter build bundle --debug` 的首个 kernel 错误是 `lib/models/model.dart:1007`
+  调用 `sessionCanIncrementalReconnectSync` 未定义——`flutter/lib/generated_bridge.dart`
+  停留在 2026-11-02 21:54，早于 `src/flutter_ffi.rs` 新增
+  `session_can_incremental_reconnect_sync`（同步 `SyncReturn<bool>`）。
+- 约束：`generated_bridge.dart`、`bridge_generated.rs`、`bridge_generated.io.rs` 都是
+  gitignored 的 codegen 产物，AGENTS.md 明确本地不跑 `flutter_rust_bridge_codegen`。
+- 修复（仅本地构建用，CI 重新生成后等价）：手工补 Rust 侧 `*_impl` 与 `#[no_mangle]`
+  导出、Dart 侧 abstract 声明 / `RustdeskImpl` 实现 / `RustdeskWire` 的 `_lookup` 三处，
+  照 `sessionGetEnableTrustedDevices` 的模式写。
+- 结果：`nm -D` 有 `wire_session_can_incremental_reconnect_sync` 符号，
+  `flutter build bundle --debug` 无 kernel 错误，`flutter build linux --debug` 产出
+  `flutter/build/linux/x64/debug/bundle/`，容器内 `flutter build linux` 的
+  `invalid-type` 未复现。

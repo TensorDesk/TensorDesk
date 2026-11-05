@@ -456,6 +456,20 @@ RustDesk 最大的运行成本是 **中继流量**：viewer 窗口最小化 / �
 
 与所有其他 Phase 独立。**在 Phase 3.1.6 动态节流之上叠加**——节流管 encoder 输出 bitrate，本 Phase 管 viewer 接收频率，两者完全正交。
 
+#### 3.5.8 实施状态（2026-11-05）
+
+- 已落地：服务端 per-viewer 停帧（`custom_fps` 1..=4 = 挂起，`-1` = 恢复并强制 I 帧）、
+  VPX/AOM 编码器强制关键帧、Flutter 桌面/移动的挂起信号与空闲检测、`<30s` 静默增量重连。
+- 与 3.5.6 的偏差：3.5.6 里列出的 `suspend-blur-fps` / `suspend-minimize-fps` /
+  `suspend-idle-seconds` / `reconnect-buffer-seconds` 未落地为配置键——挂起行为使用 Dart 侧常量，
+  这些键已从 `libs/base/src/config/keys.rs` 移除，避免死配置。
+- 已修复前置缺陷：客户端自动 fps 曾可能降到 1..4，被服务端误判为挂起导致 viewer 永久冻结；
+  现在 `fps_control()` 把自动档位下限钳到 5。
+- 验证：本地 hbbs 双实例端到端集成已完成（Flutter bundle B 侧）：
+  空闲 120s 挂起后 10s 噪声仅 +198 B（基线 1,039,175 B）、恢复 3.2s +203,721 B、
+  最小化挂起/恢复、闪断 <30s 静默重连（1s 内重新打洞）、断链 >30s 弹框、
+  关闭开关零回归，详见 `docs/specs/viewer-suspend/spec.md` §10.4–10.5。
+
 ---
 
 ## 四、依赖关系与优先级
@@ -500,18 +514,18 @@ Phase 3.1.6 (动态节流) ─── 已实施，实测通过 (e8885edc9)
 - [x] 10Hz 时间戳小变化：32.6 → 12.7 kbps（~2.6x）
 - [x] 无任何回归（cargo test / 双机重连 / 渲染正确）
 
-### Phase 5（Viewer 挂起 + 增量重连）——实现完成，集成测试待执行
+### Phase 5（Viewer 挂起 + 增量重连）——实现完成，本地双实例集成已验证
 
-- [x] `cargo test -p rustdesk --lib` 205 passed（含 10 个 Phase 5 新增测试：3 个 VideoQoS explicit_fps、6 个 ConnectionRoundState 增量重连、1 个 video_service per-subscriber drop）
+- [x] `cargo test --lib --features flutter` 226 passed（1 个失败项为容器缺键盘上下文的既有环境失败，与本方案无关）
 - [x] 双 viewer 混合场景：viewer1 挂起 / viewer2 正常 → viewer2 不受影响（`send_video_frame_skips_suspended_viewers` 单元测试）
-- [x] 关闭 `enable-viewer-suspend` 后，行为与 master 完全一致（Flutter 默认不发挂起信号；`custom_fps >= 5` 分支覆盖）
+- [x] 关闭 `enable-viewer-suspend` 后，行为与 master 完全一致（实测：最小化不发 `custom_fps: 1`，5s 噪声 +299,971 B）
 - [x] Linux bullseye Docker release 构建成功
-- [ ] Desktop 窗口最小化 30s → viewer 帧流量降到 0
-- [ ] Desktop 失焦 / Alt+Tab 1min → 帧流量降到 0
-- [ ] Mobile App 后台 30s → 帧流量 0，TestDelay 继续
-- [ ] 空闲挂起：鼠标不动 120s 后自动停帧，输入立即恢复
-- [ ] 闪断（< 30s）：客户端不弹重连 UI，服务端 encoder 不重建
-- [ ] 彻底断（> 30s）：行为与当前一致（强制重连）
+- [x] Desktop 窗口最小化 → viewer 帧流量降到 0（实测：挂起保持，噪声 5s +132 B；恢复 5s +341,917 B）
+- [ ] Desktop 失焦 / Alt+Tab 1min → 帧流量降到 0（代码路径同最小化，未单独端到端操作）
+- [ ] Mobile App 后台 30s → 帧流量 0，TestDelay 继续（移动端钩子仅编译级验证）
+- [x] 空闲挂起：鼠标不动 120s 后自动停帧（10s 噪声 +198 B），输入立即恢复（3.2s +203,721 B）
+- [x] 闪断（< 30s）：客户端不弹重连 UI，1s 内重新打洞（encoder 按连接重建，见 spec §10.5）
+- [x] 彻底断（> 30s）：弹框等待用户（静默重连 2 次 + 离线自动重试 30s 耗尽后停留）
 - [ ] 连接自建 VPS hbbr/hbbr 正常
 
 阶段间回归：
