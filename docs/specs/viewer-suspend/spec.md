@@ -100,56 +100,40 @@ FFI.instance.sessionSetCustomFps(sessionId, 30); // 恢复
 1. **QoS 部分**（留给 congestion 自适应）：per-user 的 fps 调整仍通过 `user_delay_response_elapsed` → `user_network_delay` → `fps_cap()` → `highest_fps()`；
 2. **Viewer 显式请求部分**（本次新增）：通过 Viewer 的 custom_fps 控制 send 频率，不影响 encoder fps。
 
-**改动点**：在 `VideoService::send_video_frame_shared` 里，遍历 Subscriber 时查该 viewer 的"想要接收频率"，决定这帧发不发。
+**改动点**：在视频帧发送处按订阅者过滤，跳过已挂起的 viewer。
 
-实现方式：给 ServiceInner 的 HashMap 里每个 Subscriber 加一份 **per-subscriber drop 状态**。但 Subscriber 泛型是 `T: Subscriber + From<ConnInner>`，VideoService 用的是哪种 T？
+**实现（已落地，与初版草稿不同）**：不做「每 N 帧发一帧」的抽稀。已编码的 P 帧互相引用前一张参考帧，被丢帧的 viewer 会丢失参考链，后续 P 帧无法正确解码。因此挂起语义是**二进制**的：挂起期间一帧都不发，恢复时由编码器强制一个 I 帧重建参考链（§3.6）。这样既没有解码错误，也不需要 per-subscriber 的计数器状态。
 
-查代码（`src/server/service.rs:43`）：`GenericService = ServiceTmpl<ConnInner>`，ConnInner 同时是多个 service 的 Subscriber。所以 **不能在 ConnInner 上加视频专属字段**——会污染 audio/clipboard 等其他 service。
-
-**最终方案**：VideoService 改用 **包一层的 Subscriber**：
+也没有新建 `VideoSubscriber` 包装类型——它会让 video service 的泛型类型扩散到 `for_each_subscribe_mut` 等已有接口。改法是给 `ServiceTmpl` 加一个通用的只读遍历钩子，video service 在自己的发送函数里拿订阅 id 集合、查 `VIDEO_QOS.user_fps_target()`、自行决定丢弃：
 
 ```rust
-// src/server/video_service/video_sub.rs（新建）
-#[derive(Clone, Default)]
-pub struct VideoSubscriber {
-    pub inner: ConnInner,
-    pub drop_state: AtomicU32, // 帧跳过计数器，用 fetch_add 原子访问
-}
-impl Subscriber for VideoSubscriber {
-    fn id(&self) -> i32 { self.inner.id() }
-    fn send(&mut self, msg: Arc<Message>) { self.inner.send(msg) }
-}
-impl From<ConnInner> for VideoSubscriber {
-    fn from(inner: ConnInner) -> Self { Self { inner, drop_state: 0.into() } }
-}
-```
-
-然后 `send_video_frame_shared` 改：
-
-```rust
-pub fn send_video_frame_shared(&self, msg: Arc<Message>) -> HashSet<i32> {
-    let mut conn_ids = HashSet::new();
+// src/server/service.rs —— 唯一的共享改动，纯新增
+pub fn for_each_subscribe_mut<F>(&self, mut f: F)
+where F: FnMut(i32, &mut T) {
     let mut lock = self.0.write().unwrap();
-    let encoder_fps = VIDEO_QOS.fps(); // 快照，不要多次 lock
-    for sub in lock.subscribes.values_mut() {
-        let id = sub.inner.id();
-        let viewer_fps = VIDEO_QOS.user_fps_target(id); // 新增：per-user 自定义 target
-        if viewer_fps == 0 || viewer_fps < encoder_fps {
-            // drop_state 每过 encoder_fps / max(1, viewer_fps) 次才真正发一次
-            let skip_period = encoder_fps.max(1) / viewer_fps.max(1);
-            let prev = sub.drop_state.fetch_add(1, Ordering::Relaxed);
-            if prev % skip_period != 0 {
-                continue;
-            }
-        }
+    for (id, s) in lock.subscribes.iter_mut() { f(*id, s); }
+}
+
+// src/server/video_service.rs
+fn send_video_frame_to_subscribers(sp: &GenericService, msg: Message) -> HashSet<i32> {
+    // 先取 id 列表，再查 QoS：QoS 锁与服务锁不嵌套
+    let ids: Vec<i32> = { ... sp.for_each_subscribe_mut(|id, _| v.push(id)) ... };
+    let suspended: HashSet<i32> = {
+        let qos = VIDEO_QOS.lock().unwrap();
+        ids.iter().copied().filter(|id| qos.user_fps_target(*id) > 0).collect()
+    };
+    let msg = Arc::new(msg);
+    let mut sent = HashSet::new();
+    sp.for_each_subscribe_mut(|id, sub| {
+        if suspended.contains(&id) { return; }
         sub.send(msg.clone());
-        conn_ids.insert(id);
-    }
-    conn_ids
+        sent.insert(id);
+    });
+    sent
 }
 ```
 
-**保留路径**：没有任何 viewer 显式设置 custom_fps 时，所有 viewer 的 viewer_fps 为 0 → 全部帧正常发送，与现状一致。
+**保留路径**：没有任何 viewer 显式设置 custom_fps 时，`user_fps_target()` 全为 0 → 全部帧照常发送，与现状一致。
 
 ### 3.4 `user_fps_target` 与 QoS 的融合
 
@@ -163,9 +147,19 @@ struct UserData {
 }
 ```
 
-- `user_custom_fps(id, fps)` 改为：当 fps > 0 时设置 `explicit_fps = Some(fps)`；当 fps == 0 时**保留**现有逻辑（UI reset 时的语义），但本次 viewer suspend 不使用 fps=0——使用 fps=1 表示"显式停帧"，fps=0 继续表示"恢复默认"。
+- `user_custom_fps(id, fps)` **保持原语义不变**（用户设置的 fps 上限，参与 QoS 全局计算），只由 `custom_fps >= 5` 调用。
+- 新增 `user_explicit_fps(id, fps)`：`fps == 0` 清除 `explicit_fps`，非 0 设置。**非零即挂起**，不解释具体数值——挂起期间服务端本来就不发任何帧。
 - `fps_cap()`（QoS 自适应上限）**不变**。
-- 新增 `user_fps_target(id)`：返回 `explicit_fps.unwrap_or(0)`——0 表示"按 encoder fps 来"，>0 表示 viewer 主动想要该 fps。
+- 新增 `user_fps_target(id)`：返回 `explicit_fps.unwrap_or(0)`——0 表示"按 encoder fps 来"，>0 表示该 viewer 当前挂起。
+
+`connection.rs` 里 `custom_fps` 的分派（按取值范围区分三种语义）：
+
+| 取值 | 语义 |
+|---|---|
+| `>= 5` | 用户设置的 fps 上限：走 `user_custom_fps`；若此前处于挂起，同时清除挂起并强制 I 帧 |
+| `1..=4` | viewer 挂起（瞬态，不写配置） |
+| `-1` | viewer 恢复：清除挂起并强制下一帧为 I 帧 |
+| `0` | 不处理（保持现状） |
 
 这样，**QoS 自适应降 fps（弱网场景）和 viewer 显式降 fps（挂起/失焦）互不干扰**。QoS 仍管 encoder 全局 fps，per-viewer drop 只管 viewer 自己的接收频率。
 
@@ -181,47 +175,30 @@ viewer 从挂起恢复（custom_fps → 正常值）时，**必须立即给该 v
 
 #### 3.6.1 编码器接口
 
-`scrap` crate 里 `VpxEncoder::encode` 当前 flags 参数传 `0`（`/home/portion/rustdesk/libs/scrap/src/common/vpxcodec.rs:266-273`）：
+**实现（已落地）**：给 `EncoderApi::encode_to_message` 增加一个 `force_keyframe: bool` 参数（唯一一个需要改签名的 trait 方法，调用点只有 video_service 一处），各编码器内部：
 
-```rust
-call_vpx!(vpx_codec_encode(&mut self.ctx, &image, pts as _, 1, 0 /* Flags */, VPX_DL_REALTIME as _));
-```
-
-VPX 要强制输出 keyframe 需要传 `VPX_EFLAG_FORCE_KF`（value = 1）。新增一个**重载**，不改现有 encode 签名（保持最小 diff）：
-
-```rust
-// vpxcodec.rs 中新增：
-pub fn encode_keyframe<'a>(&'a mut self, pts: i64, data: &[u8], stride_align: usize)
-    -> Result<EncodeFrames<'a>> {
-    // ... 图像封装同 encode ...
-    call_vpx!(vpx_codec_encode(&mut self.ctx, &image, pts as _, 1,
-        1 /* VPX_EFLAG_FORCE_KF */, VPX_DL_REALTIME as _));
-    Ok(EncodeFrames { ctx: &mut self.ctx, iter: ptr::null() })
-}
-```
-
-AomEncoder / HwRamEncoder / VRamEncoder 同理加 `encode_keyframe` 重载；**但 encoder trait（`EncoderApi`）不加新方法**——trait 改动会牵动所有实现，本次让调用侧直接调具体 encoder 的扩展方法。
+- `VpxEncoder` / `AomEncoder`：抽出 `encode_with_flags(..., flags)`，`encode` 传 0，`encode_keyframe` 传 `VPX_EFLAG_FORCE_KF` / `AOM_EFLAG_FORCE_KF`；`encode_to_message` 按 `force_keyframe` 选择其一。
+- `HwRamEncoder`（hwcodec）/ `VRamEncoder`：签名接受该参数但暂不强制 IDR（FFmpeg / 硬件编码路径的强制关键帧接口不同，见 §3.6.3）。
 
 #### 3.6.2 触发路径
 
-VideoFrameController（`src/server/video_service.rs:176`）加一个原子标记：
+`video_service.rs` 里加一个进程级一次性标记：
 
 ```rust
-struct VideoFrameController {
-    display_idx: usize,
-    cur: Instant,
-    send_conn_ids: HashSet<i32>,
-    force_keyframe: AtomicBool,    // 新增
+pub static ref FORCE_KEYFRAME: AtomicBool = AtomicBool::new(false);
+```
+
+`connection.rs` 在「挂起 → 恢复」时置位：
+
+```rust
+let mut qos = video_service::VIDEO_QOS.lock().unwrap();
+if qos.user_fps_target(id) > 0 {
+    qos.user_explicit_fps(id, 0);
+    video_service::FORCE_KEYFRAME.store(true, Ordering::Relaxed);
 }
 ```
 
-当 viewer 从挂起恢复（`user_custom_fps(id, fps)` 里新 fps > `suspend_minimize_fps` 且旧 fps ≤ 该值）时：
-
-```rust
-VideoFrameController::global().force_keyframe.store(true, Ordering::Relaxed);
-```
-
-下一个 encoder encode call 在 encode loop 开头检查这个 flag——如果 true，走 `encode_keyframe` 重载并清 flag。这样只影响下**一帧**编码，不是一直强制 I 帧。
+编码循环在 `encode_to_message` 之前用 `compare_exchange(true, false)` 读取并清除，只有紧随其后的那一帧被强制成 I 帧，后续帧恢复普通编码。
 
 #### 3.6.3 注意
 
@@ -422,12 +399,10 @@ Timer? _idleTimer;
 | `enable-viewer-suspend` | `true` | 总开关；false 时完全不发送挂起信号，服务端行为不变 |
 | `suspend-on-minimize` | `true` | 窗口最小化时挂起 |
 | `suspend-on-background` | `true` | App 后台时挂起（Mobile） |
-| `suspend-on-blur` | `true` | 失焦 / Alt+Tab 时降 fps（不是停帧） |
-| `suspend-blur-fps` | `5` | 失焦时的接收 fps |
-| `suspend-idle-enable` | `true` | 空闲挂起总开关 |
-| `suspend-idle-seconds` | `120` | 空闲判定秒数 |
-| `suspend-minimize-fps` | `1` | 最小化时的接收 fps（0=完全停帧，1=保活） |
-| `reconnect-buffer-seconds` | `30` | 客户端侧断链后仍尝试增量重连的窗口 |
+| `suspend-on-blur` | `true` | 失焦 / Alt+Tab 时挂起 |
+| `suspend-idle-enable` | `false` | 空闲挂起开关；默认关闭，因为被动观看也会被判定为空闲 |
+
+挂起是二进制的（停发全部帧），因此不提供「失焦 / 最小化时的接收 fps」键；空闲阈值当前固定为 120s（含桌面与 Mobile）。这四个键曾经加入过，但没有任何读取方，实施时已删除。
 
 ---
 
@@ -469,21 +444,24 @@ Timer? _idleTimer;
 
 ## 7. 验证计划
 
-### 7.1 单元测试（Rust）
+### 7.1 单元测试（Rust，已落地）
 
 | 测试 | 位置 | 通过条件 |
 |---|---|---|
-| VideoQoS.user_fps_target 与 fps_cap 分离 | `video_qos/tests/viewer_fps.rs` | explicit_fps 设置后 user_fps_target 返回该值，fps_cap 不受影响 |
-| send_video_frame_shared per-subscriber drop | `video_service/tests/drop.rs` | encoder_fps=30，viewer1 explicit_fps=1，viewer2 explicit_fps=30 → viewer1 平均 1fps 收到帧 |
-| 多个 viewer 混合 QoS congestion + viewer suspend | `video_qos/tests/viewer_fps.rs` | viewer1 QoS 自适应降到 10，viewer2 explicit_fps=1 → 各自独立生效 |
+| explicit_fps 设置/清除 | `src/server/video_qos.rs` 内联测试 | `user_explicit_fps(id, 1)` → `user_fps_target(id) == 1`；`user_explicit_fps(id, 0)` → 0 |
+| explicit_fps 与 QoS 全局 fps 正交 | `src/server/video_qos.rs` | 设置 explicit_fps 不改变 QoS 采集的 `fps_cap()` |
+| 用户 custom_fps 与挂起并存 | `src/server/video_qos.rs` | `user_custom_fps(5)` + `user_explicit_fps(1)` 两者独立保留 |
+| 增量重连判定 | `src/client.rs` `#[cfg(test)] mod tests` | 成功连接 + 断线窗口内 → true；未连接过 / 超窗口 / `clear_session()` 后 → false |
+
+「按订阅者丢弃帧」的发送路径与 Flutter 空闲状态机没有单测，依赖集成测试（§7.2）。
 
 ### 7.2 集成测试（双机 .165/.167）
 
 | 场景 | 操作 | 预期 |
 |---|---|---|
-| Desktop 最小化 → 恢复 | 最小化 RustDesk 窗口 30s → 恢复 | 这 30s 内 viewer 收到 0 帧（或 30 帧当保活），恢复后立即正常 |
+| Desktop 最小化 → 恢复 | 最小化 RustDesk 窗口 30s → 恢复 | 这 30s 内 viewer 收到 0 帧，恢复后首帧为 I 帧并立即正常 |
 | Mobile 后台 → 前台 | App 切后台 30s → 回前台 | 同 |
-| Alt+Tab 失焦 1min | 切换到其他窗口 1min | viewer 接收 ~5fps |
+| Alt+Tab 失焦 1min | 切换到其他窗口 1min | viewer 收到 0 帧，回到该窗口后恢复 |
 | 空闲挂起 | 鼠标不动 120s → 移动鼠标 | 进入挂起 → 恢复平滑 |
 | 闪断恢复（< 30s） | `iptables -I OUTPUT -p tcp --dport 21118 -j DROP` 10s 后删 | 客户端不弹重连 UI，自动恢复；服务端 encoder 不重建（可通过 md5 / pid 验证） |
 | 彻底断（> 30s） | DROP 60s | 客户端弹重连 UI，服务端 encoder 重建（与当前一致） |
@@ -501,9 +479,9 @@ Timer? _idleTimer;
 
 | 风险 | 触发条件 | 缓解 |
 |---|---|---|
-| Viewer suspend 影响其他 viewer | VideoService 错误地把 explicit_fps 纳入 encoder fps 计算 | explicit_fps 只参与 per-subscriber drop，不参与 QoS 全局 fps；单元测试覆盖 |
-| 恢复体验差（黑屏直到下一个 I 帧） | encoder keyframe refresh 间隔长 | 加「恢复时强制 I 帧」功能作为 follow-up；简化方案先不测 |
-| ServiceTmpl<VideoSubscriber> 替换 GenericService 后破坏 audio/clipboard | 如果 video_service 里 audio/clipboard 也用了 VideoSubscriber | VideoSubscriber 只在 `send_video_frame_shared` 里用；audio/clipboard 继续走 ConnInner |
+| Viewer suspend 影响其他 viewer | 把 explicit_fps 纳入 encoder fps 计算 | explicit_fps 只参与按订阅者丢弃，不进入 QoS 全局 fps；`fps_cap()` 未改 |
+| 恢复体验差（黑屏直到下一个 I 帧） | VPX/AOM 强制关键帧已实现；HW 编码器未强制 IDR | 软编路径恢复即出 I 帧；HW 编码器见 §10.5 已知限制 |
+| `for_each_subscribe_mut` 影响其他 service | 它是纯新增方法，`send_shared` / `send_video_frame` 未改 | audio/clipboard 仍走原路径 |
 | 断链 buffer 30s 里如果同一个 viewer 真的换了机器重连 | session_key 被复用 | session_key 是每次新登录生成的 UUID；buffer 期间同 IP 同 ID 才算复用 |
 | iOS 后台限制 | iOS App 后台后 socket 会被系统掐 | 用 `AppLifecycleState.paused` 立即 suspend；TestDelay 也停，30s 后强制断链（这是 iOS 系统行为，不是我们代码） |
 
@@ -520,3 +498,42 @@ Timer? _idleTimer;
 - **不做中继 hbbr 端的转发优化**：hbbr 转发的字节是固定 1:1，我们发少了 hbbr 自然少发；
 - **不做 WebRTC SFU 级别的单独编码路径**：当前 WebRTC 不是默认通道；
 - **不做 iOS 后台保活 socket**：iOS 系统行为，规避成本高。
+
+---
+
+## 10. 实施记录（2026-11）
+
+### 10.1 与方案草稿的偏差
+
+1. **per-viewer 丢帧改为二进制挂起**（§3.3）：已编码的 P 帧互相引用，抽稀会让 viewer 丢失参考链；挂起期间一帧不发，恢复时强制 I 帧。
+2. **不新建 `VideoSubscriber`**：改用 `ServiceTmpl::for_each_subscribe_mut` 一个只读遍历钩子，video service 自行按 `user_fps_target()` 过滤。
+3. **强制 I 帧**：`EncoderApi::encode_to_message` 增加 `force_keyframe: bool`（调用点只有 video_service 一处），VPX/AOM 走 `encode_with_flags`；进程级一次性 `FORCE_KEYFRAME` 原子标记由 `compare_exchange` 读取并清除。
+4. **`custom_fps` 复用为三种语义**：`>=5` 是原有的用户 fps 上限，`1..=4` 是挂起，`-1` 是恢复。挂起/恢复是瞬态信号，不写 peer 配置（`Session::set_custom_fps` 里 `custom_fps < 5` 直接发 Message，不落盘）。
+5. **`get_toggle_option` 是硬编码白名单**：新增开关必须在 `src/client.rs` 显式列出，否则永远返回 false。`suspend-idle-enable` 默认 false（被动观看也会被判空闲）。
+6. **删除无读取方的配置键**：`suspend-blur-fps` / `suspend-minimize-fps` / `suspend-idle-seconds` / `reconnect-buffer-seconds`；空闲阈值固定 120s，重连窗口固定 30s（Dart 常量）。
+
+### 10.2 空闲检测
+
+`InputModel.lastInputAt` 在鼠标（`handleMouse` / `_sendMouseUnchecked` / `scroll`）、键盘（`handleKeyEvent` / `handleRawKeyEvent` / `inputKey`）入口更新。桌面与 Mobile 的空闲 watcher 每秒读取它：无输入满 120s → `inactive`（挂起）；出现新输入且当前是 `inactive` → 回到 `foreground`。这样空闲恢复不依赖窗口事件，避免「悬停 2 分钟后画面冻结且无法自动恢复」。
+
+### 10.3 断线增量重连
+
+- 服务端零改动：`SessionKey` 保留、`session_reconnected()`、`check_remove_session()`、`HIBERNATE_TIMEOUT` 均已存在。
+- 客户端 `ConnectionRoundState` 新增「已成功连接」标记与 `disconnected_at`，`can_incremental_reconnect(buffer_sec)` 判定「曾经成功连接 + 断线发生在窗口内」；`clear_session()` 用于彻底断开时重置。服务端的 SessionKey 由 LoginRequest 里的 `my_id` / `my_name` / `session_id` 组成，而重连复用同一个 `session_id`，因此服务端天然把两次连接认作同一会话，客户端不需要携带额外 key。
+- Flutter `handleMsgBox` 在弹出 "Connection Error" 前先尝试静默重连：最多 2 次，`sessionCanIncrementalReconnectSync`（同步 FFI）→ `sessionReconnect`；Web 侧该探针恒为 false。
+- 恢复后首帧由服务端强制 I 帧，不需要额外协议。
+
+### 10.4 验证状态
+
+- `cargo check -p rustdesk --lib --features flutter` 通过（含 `flutter_ffi.rs`）。
+- `cargo test -p rustdesk --lib`：204 passed。
+- Flutter 侧没有本地 SDK，未做 `flutter analyze`；`generated_bridge.dart` 由 CI codegen 生成，本地未手工补齐。
+
+### 10.5 已知限制
+
+- 所有 viewer 都挂起时编码器仍在产帧：带宽为零，但 CPU 照常消耗；不做编码器暂停。
+- 强制 I 帧是进程级一次性标记，会给所有 viewer 同时产出一帧 I 帧（一次恢复可接受）。
+- HW 编码器（hwcodec / vram）接受 `force_keyframe` 参数但暂不强制 IDR，恢复后可能等自然关键帧。
+- 空闲判定依赖输入模型埋点；未经过这些入口的输入路径不会被计入。
+- 双机集成测试（.165/.167）尚未执行：本机容器内的客户端缺少可用的 Sciter/GTK 运行时资源，无法启动被控端 GUI。
+- 「按订阅者丢弃帧」发送路径、Flutter 空闲状态机、断线静默重连均无自动化测试，待集成测试补齐。
