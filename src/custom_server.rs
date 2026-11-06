@@ -19,6 +19,10 @@ pub struct CustomServer {
     pub api: String,
     #[serde(default)]
     pub relay: String,
+    #[serde(default)]
+    pub enroll: String,
+    #[serde(default)]
+    pub tenant: String,
 }
 
 fn get_custom_server_from_config_string(s: &str) -> ResultType<CustomServer> {
@@ -68,6 +72,8 @@ pub fn get_custom_server_from_string(s: &str) -> ResultType<CustomServer> {
         let mut key = String::default();
         let mut api = String::default();
         let mut relay = String::default();
+        let mut enroll = String::default();
+        let mut tenant = String::default();
         let strs_iter = strs.iter();
         for el in strs_iter {
             let el_lower = el.to_lowercase();
@@ -83,12 +89,20 @@ pub fn get_custom_server_from_string(s: &str) -> ResultType<CustomServer> {
             if el_lower.starts_with("relay=") {
                 relay = el.chars().skip(6).collect();
             }
+            if el_lower.starts_with("enroll=") {
+                enroll = el.chars().skip(7).collect();
+            }
+            if el_lower.starts_with("tenant=") {
+                tenant = el.chars().skip(7).collect();
+            }
         }
         return Ok(CustomServer {
             host,
             key,
             api,
             relay,
+            enroll,
+            tenant,
         });
     } else {
         let s = s
@@ -127,6 +141,7 @@ mod test {
                 key: "".to_owned(),
                 api: "".to_owned(),
                 relay: "".to_owned(),
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -136,6 +151,7 @@ mod test {
                 key: "".to_owned(),
                 api: "".to_owned(),
                 relay: "".to_owned(),
+                ..Default::default()
             }
         );
         // key in these tests is "foobar.,2" base64 encoded
@@ -149,6 +165,7 @@ mod test {
                 key: "Zm9vYmFyLiwyCg==".to_owned(),
                 api: "abc".to_owned(),
                 relay: "".to_owned(),
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -161,6 +178,7 @@ mod test {
                 key: "Zm9vYmFyLiwyCg==".to_owned(),
                 api: "".to_owned(),
                 relay: "".to_owned(),
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -173,6 +191,7 @@ mod test {
                 key: "Zm9vYmFyLiwyCg==".to_owned(),
                 api: "".to_owned(),
                 relay: "server.example.net".to_owned(),
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -185,6 +204,19 @@ mod test {
                 key: "Zm9vYmFyLiwyCg==".to_owned(),
                 api: "".to_owned(),
                 relay: "server.example.net".to_owned(),
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            get_custom_server_from_string(
+                "rustdesk-host=server.example.net,tenant=ws_abc,enroll=td1_demo.exe"
+            )
+            .unwrap(),
+            CustomServer {
+                host: "server.example.net".to_owned(),
+                tenant: "ws_abc".to_owned(),
+                enroll: "td1_demo".to_owned(),
+                ..Default::default()
             }
         );
         let lic = CustomServer {
@@ -192,6 +224,7 @@ mod test {
             key: "5Qbwsde3unUcJBtrx9ZkvUmwFNoExHzpryHuPUdqlWM=".to_owned(),
             api: "".to_owned(),
             relay: "".to_owned(),
+            ..Default::default()
         };
         assert_eq!(
             get_custom_server_from_string("rustdesk-licensed-0nI900VsFHZVBVdIlncwpHS4V0bOZ0dtVldrpVO4JHdCp0YV5WdzUGZzdnYRVjI6ISeltmIsISMuEjLx4SMiojI0N3boJye.exe")
@@ -246,6 +279,7 @@ mod test {
                 key: "Zm9vYmFyLiwyCg==".to_owned(),
                 api: "".to_owned(),
                 relay: "".to_owned(),
+                ..Default::default()
             }
         );
     }

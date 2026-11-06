@@ -1626,6 +1626,8 @@ async fn check_id(
             old_id,
             id,
             uuid,
+            tenant_id: crate::common::tenant_id(),
+            tenant_proof: crate::common::tenant_proof().into(),
             ..Default::default()
         });
         let mut ok = false;

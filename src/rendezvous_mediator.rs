@@ -1266,6 +1266,8 @@ impl RendezvousMediator {
             uuid: uuid.into(),
             pk: pk.into(),
             no_register_device: Config::no_register_device(),
+            tenant_id: crate::common::tenant_id(),
+            tenant_proof: crate::common::tenant_proof().into(),
             ..Default::default()
         });
         socket.send(&msg_out).await?;
@@ -1312,6 +1314,8 @@ impl RendezvousMediator {
         msg_out.set_register_peer(RegisterPeer {
             id,
             serial,
+            tenant_id: crate::common::tenant_id(),
+            tenant_proof: crate::common::tenant_proof().into(),
             ..Default::default()
         });
         socket.send(&msg_out).await?;

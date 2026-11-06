@@ -2693,7 +2693,24 @@ pub fn get_builtin_option(key: &str) -> String {
 
 #[inline]
 pub fn is_custom_client() -> bool {
-    get_app_name() != "RustDesk"
+    if option_env!("TENSORDESK_MANAGED_CLIENT").is_some() {
+        return true;
+    }
+    #[cfg(windows)]
+    if crate::platform::windows::get_license_from_exe_name().is_ok() {
+        return true;
+    }
+    false
+}
+
+#[inline]
+pub fn tenant_id() -> String {
+    Config::get_option(keys::OPTION_TENANT_ID)
+}
+
+#[inline]
+pub fn tenant_proof() -> Vec<u8> {
+    Config::get_option(keys::OPTION_TENANT_PROOF).into_bytes()
 }
 
 pub fn verify_login(_raw: &str, _id: &str) -> bool {

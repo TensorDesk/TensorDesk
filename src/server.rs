@@ -417,6 +417,8 @@ async fn create_relay_connection_(
     msg_out.set_request_relay(RequestRelay {
         licence_key,
         uuid,
+        tenant_id: crate::common::tenant_id(),
+        tenant_proof: crate::common::tenant_proof().into(),
         ..Default::default()
     });
     stream.send(&msg_out).await?;

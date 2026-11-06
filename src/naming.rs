@@ -17,6 +17,7 @@ fn main() {
             host: args[1].clone(),
             api,
             relay,
+            ..Default::default()
         }) {
             Ok(name) => println!("rustdesk-custom_serverd-{}.exe", name),
             Err(e) => println!("{:?}", e),

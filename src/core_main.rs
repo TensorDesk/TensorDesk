@@ -503,6 +503,8 @@ pub fn core_main() -> Option<CoreMainAction> {
                             );
                             crate::ui_interface::set_option("api-server".into(), lic.api);
                             crate::ui_interface::set_option("relay-server".into(), lic.relay);
+                            crate::ui_interface::set_option("tenant-id".into(), lic.tenant);
+                            crate::ui_interface::set_option("tenant-proof".into(), lic.enroll);
                         }
                     }
                 } else {

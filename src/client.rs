@@ -965,6 +965,8 @@ impl Client {
             // pure ws), telling the controlled side its answer may gather every candidate
             // type despite force_relay instead of requiring TURN.
             webrtc_sdp_offer,
+            tenant_id: crate::common::tenant_id(),
+            tenant_proof: crate::common::tenant_proof().into(),
             ..Default::default()
         });
         let webrtc_session_key = webrtc_offerer
@@ -1827,6 +1829,8 @@ impl Client {
                 relay_server: relay_server.clone(),
                 secure,
                 switch_code: switch_code.to_owned(),
+                tenant_id: crate::common::tenant_id(),
+                tenant_proof: crate::common::tenant_proof().into(),
                 ..Default::default()
             });
             socket.send(&msg_out).await?;
@@ -1873,6 +1877,8 @@ impl Client {
             id: peer.to_owned(),
             uuid,
             conn_type: conn_type.into(),
+            tenant_id: crate::common::tenant_id(),
+            tenant_proof: crate::common::tenant_proof().into(),
             ..Default::default()
         });
         conn.send(&msg_out).await?;
