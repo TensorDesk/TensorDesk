@@ -1,0 +1,66 @@
+# Tasks
+
+- [x] Task 1: 完成客户端租户字段改造（M0 前置）
+  - [x] SubTask 1.1: 修复 `tenant_proof()` 返回 `Vec<u8>` 与 proto `bytes` 类型不匹配的 7 处调用点（`src/client.rs`、`src/rendezvous_mediator.rs`、`src/server.rs`、`src/ui_interface.rs`）
+  - [x] SubTask 1.2: 容器 `rustdesk-builder-bullseye` 内通过 `cargo check --features flutter` 与 `cargo test --lib --features flutter`
+  - [x] SubTask 1.3: 补充回归测试：许可证 `tenant=`/`enroll=` 解析（已加）、未配置租户时字段为空
+  - [x] SubTask 1.4: 提交 `libs/hbb_common` 子模块 proto 变更并更新父仓库指针与 `src/*` 调用点；已推送 `TensorDesk/hbb_common` `78082b5`、`TensorDesk/TensorDesk` `928120edf`，`powerfs/tensorManage` 首提 `6fe728b`
+- [x] Task 2: hbbs/hbbr 租户化 fork（服务端隔离）
+  - [x] SubTask 2.1: 同步 proto 与平台公钥配置，实现 Ed25519 令牌验签 + 过期/吊销校验模块
+  - [x] SubTask 2.2: hbbs 注册键改为 `(tenant_id, device_id)`，缺失 tenant 进入 legacy 租户
+  - [x] SubTask 2.3: `PunchHoleRequest` 同租户查找，跨租户返回 `ID_NOT_EXIST` + `other_failure=TENANT_MISMATCH`（未新增枚举，保持 proto 兼容）
+  - [x] SubTask 2.4: `RequestRelay` 与 hbbr 以 `(tenant_id, uuid)` 配对，按会话记录上下行字节（只记录不限额）
+  - [x] SubTask 2.5: 每 30s 从管理 API 拉取封禁/吊销列表并本地缓存（内网 + 共享密钥）
+- [x] Task 3: 搭建 `powerfs/tensorManage` 骨架与容器化部署
+  - [x] SubTask 3.1: 仓库结构 `backend/`、`frontend/`、`server/`、`deploy/`、`docs/`
+  - [x] SubTask 3.2: `deploy/config/tensormanage.toml` 统一配置（DB/Redis/JWT/池地址与公钥/短信邮件/内部密钥）
+  - [x] SubTask 3.3: `deploy/docker-compose.yml`（web/api/postgres/redis/caddy + free 池 hbbs/hbbr）
+  - [x] SubTask 3.4: `deploy/scripts/start.sh`、`stop.sh`、`migrate.sh`（禁用 pkill/rm 清理）
+  - [x] SubTask 3.5: 健康检查与 CI（后端 cargo check/test、前端 build、Compose 配置校验）
+- [x] Task 4: 数据模型与迁移
+  - [x] SubTask 4.1: 建表迁移 `users`、`user_verifications`、`workspaces`、`memberships`、`server_pools`
+  - [x] SubTask 4.2: 建表迁移 `devices`、`device_groups`、`enroll_tokens`、`audit_logs`、`notifications`
+  - [x] SubTask 4.3: 唯一约束与索引（`devices(workspace_id, rustdesk_id)`、`devices(uuid)`、`enroll_tokens(token_hash)`）
+- [x] Task 5: 认证、注册与验证
+  - [x] SubTask 5.1: Argon2id 注册/登录，Access 15min + Refresh 轮换（Redis 吊销）
+  - [x] SubTask 5.2: 手机号/邮箱验证码发送与校验（适配器接口 + 图形验证码 + 频控，未配置供应商时写入日志适配器）
+  - [x] SubTask 5.3: 密码重置、可选 2FA、登录设备记录
+  - [x] SubTask 5.4: 注册成功自动创建个人工作区（Free 套餐）
+- [x] Task 6: 工作区、接入令牌与设备
+  - [x] SubTask 6.1: 令牌签发/吊销/使用记录（只存哈希，展示一次），一次性/限时/长期
+  - [x] SubTask 6.2: 客户端兼容 API：`/api/heartbeat`、`/api/sysinfo`、`/api/sysinfo_ver`、`/api/devices/deploy`、`/api/currentUser`
+  - [x] SubTask 6.3: 地址簿 `/api/ab/get`、`/api/ab` 按 `tenant + user` 命名空间隔离
+  - [x] SubTask 6.4: 设备列表/重命名/分组/解绑；心跳维护在线状态与连接数
+  - [x] SubTask 6.5: 审计入库 `/api/audit/conn`、`/api/audit/file`
+- [x] Task 7: 管理工作台 API
+  - [x] SubTask 7.1: RBAC（`super_admin`/`ops`/`support`）中间件与越权拒绝
+  - [x] SubTask 7.2: 用户管理（封禁/解封/改资料/重置密码/强制下线）
+  - [x] SubTask 7.3: 跨租户设备检索（写审计）、令牌吊销、实例池只读状态
+  - [x] SubTask 7.4: 审计查询接口；所有管理写操作落库；越权访问（admin/工作区/角色）补写 `authz.*` 审计
+  - [x] SubTask 7.5: 内部 API `/internal/tenants/{id}/status`、`/internal/revocations`（内网鉴权）
+- [x] Task 8: 前端控制台与管理台
+  - [x] SubTask 8.1: React 18 + TS + Vite + AntD5 + ProLayout/ProTable，接入 powerfs 设计令牌（`#1677FF`、`#1677FF→#722ED1`、浅/深主题）
+  - [x] SubTask 8.2: 登录/注册/验证/找回密码页面
+  - [x] SubTask 8.3: 用户控制台：工作区概览（含客户端配置说明）、设备列表、接入令牌、用量、账号安全
+  - [x] SubTask 8.4: 管理工作台：用户、工作区、设备、令牌、实例池、审计
+  - [x] SubTask 8.5: 套餐页展示 Free/Pro/Ultra 与"升级"占位（支付未接入时提示联系开通）
+- [x] Task 9: 测试与验收
+  - [x] SubTask 9.1: 单元测试：令牌签发/验签/过期/吊销、RBAC、密码哈希、心跳序列化
+  - [x] SubTask 9.2: 集成测试：租户隔离矩阵、封禁生效、地址簿隔离、令牌使用次数（`backend/tests/smoke.sh` 75/75）
+  - [x] SubTask 9.3: 端到端（真实客户端 + 共享 hbbs/hbbr）：部署归属、同 ID 跨租户注册、伪造令牌拒绝、协议级跨租户拒绝；连续运行 ≥1 分钟（452s/599s）
+  - [x] SubTask 9.4: 压测：500 设备心跳 10 分钟 P95 53.10ms < 100ms；50 并发部署 100% 成功
+  - [x] SubTask 9.5: 测试报告归档到 `tensorManage/docs/test-report.md`，合规清单归档到 `tensorManage/docs/compliance.md`
+- [x] Task 10: 目标主机真机验收
+  - [x] SubTask 10.1: 真实 GUI 会话级跨租户远控（同租户远控成功 + 跨租户拒绝）；实测 13:10:33 同租户 `ws-gui-a` 打洞建连成功（TCP punch + `Server listening on`），13:11:10 跨租户 `ws-gui-b` 请求同一设备被 `TENANT_MISMATCH(2)` 拒绝；单机多实例需用 `unshare -r` 隔离全局 IPC，否则 `ipc::get_options_` 会让新实例继承旧实例选项
+  - [x] SubTask 10.2: 空主机执行 `deploy/scripts/start.sh`，确认迁移自动执行且全部健康检查通过；已在 `150.158.12.254` 实测 7/7 服务 healthy、`_sqlx_migrations` 8 条成功、12 张业务表、`/healthz` 与 console 均 200；受目标机 Docker Hub 不可达与 1GB 内存限制，镜像在本机构建后 `docker load`，`start.sh` 仅把 `up -d --build` 改为 `--no-build`
+  - [x] SubTask 10.3: 解封后 hbbs 进程内封禁缓存清理（`/internal/revocations` 返回 suspended 租户全量快照，hbbs 整体替换集合；实测解封 30.17s 恢复）
+
+# Task Dependencies
+
+- Task 2 依赖 Task 1（proto 与客户端字段先定稿，服务端按同版本 proto 实现）
+- Task 6 依赖 Task 4、Task 5（数据表与认证先行）
+- Task 7 依赖 Task 6（设备/令牌数据已就绪）
+- Task 8 依赖 Task 5、Task 6、Task 7（后端 API 可用后再联调）
+- Task 9 依赖 Task 2、Task 3、Task 8
+- Task 3 可与 Task 1、Task 2 并行
+- Task 10 依赖目标主机与公网域名/证书，需部署环境就绪后执行
