@@ -26,7 +26,7 @@ pub fn is_sync_clipboard_between_sessions_enabled() -> bool {
 }
 
 // This format is used to store the flag in the clipboard.
-const RUSTDESK_CLIPBOARD_OWNER_FORMAT: &'static str = "dyn.com.rustdesk.owner";
+const RUSTDESK_CLIPBOARD_OWNER_FORMAT: &'static str = "dyn.com.tensordesk.owner";
 
 // Add special format for Excel XML Spreadsheet
 const CLIPBOARD_FORMAT_EXCEL_XML_SPREADSHEET: &'static str = "XML Spreadsheet";
@@ -521,7 +521,7 @@ impl ClipboardContext {
                 #[cfg(target_os = "macos")]
                 let is_kde_x11 = false;
                 let clear_holder_text = if is_kde_x11 {
-                    "RustDesk placeholder to clear the file clipboard"
+                    "TensorDesk placeholder to clear the file clipboard"
                 } else {
                     ""
                 }

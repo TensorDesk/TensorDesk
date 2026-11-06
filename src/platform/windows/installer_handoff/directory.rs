@@ -43,7 +43,7 @@ pub(in crate::platform::windows) fn path() -> ResultType<PathBuf> {
         }
     }
     Ok(temporary.join(format!(
-        "rustdesk-install-{}",
+        "tensordesk-install-{}",
         uuid::Uuid::new_v4().simple()
     )))
 }

@@ -81,7 +81,7 @@ def make_parser():
         help='Connection type, e.g. "incoming", "outgoing". Default is empty, means incoming-outgoing',
     )
     parser.add_argument(
-        "--app-name", type=str, default="RustDesk", help="The app name."
+        "--app-name", type=str, default="TensorDesk", help="The app name."
     )
     parser.add_argument(
         "-v", "--version", type=str, default="", help="The app version."
@@ -276,7 +276,7 @@ def replace_app_name_in_langs(app_name):
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
         for i, line in enumerate(lines):
-            lines[i] = line.replace("RustDesk", app_name)
+            lines[i] = line.replace("TensorDesk", app_name)
         with open(file_path, "w", encoding="utf-8") as f:
             f.writelines(lines)
 
@@ -498,7 +498,7 @@ def init_global_vars(dist_dir, app_name, args):
 
 
 def update_license_file(app_name):
-    if app_name == "RustDesk":
+    if app_name == "TensorDesk":
         return
     license_file = Path(sys.argv[0]).parent.joinpath("Package/License.rtf")
     with open(license_file, "r", encoding="utf-8") as f:
@@ -544,7 +544,7 @@ if __name__ == "__main__":
     if not gen_pre_vars(args, dist_dir):
         sys.exit(-1)
 
-    if app_name != "RustDesk":
+    if app_name != "TensorDesk":
         replace_component_guids_in_wxs()
 
     if not gen_upgrade_info():

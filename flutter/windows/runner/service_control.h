@@ -172,7 +172,7 @@ inline std::optional<DWORD> HandleCommand(const wchar_t* command_line) {
   LocalFree(args);
   if (result != ERROR_SUCCESS) {
     std::fwprintf(stderr,
-                  L"RustDesk service control failed with Windows error %lu\n",
+                  L"TensorDesk service control failed with Windows error %lu\n",
                   result);
   }
   return result;

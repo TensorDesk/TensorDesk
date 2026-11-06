@@ -32,7 +32,7 @@ pub(super) struct InstallGate {
 impl InstallGate {
     pub(super) fn new() -> ResultType<Self> {
         let name = format!(
-            r"\\.\pipe\rustdesk-install-{}",
+            r"\\.\pipe\tensordesk-install-{}",
             uuid::Uuid::new_v4().simple()
         );
         let wide_name = wide_string(&name);

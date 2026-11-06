@@ -70,7 +70,7 @@ const PRIVILEGED_UPDATE_BODY: &str = r#"
 	    set check_source to "if [ -n " & expected_sha256_q & " ]; then test -f " & source_path_q & "; else test -d " & source_path_q & "; fi;"
 	    set kill_others to "pids=$(pgrep -x '" & app_name & "' | grep -vx " & cur_pid & " || true); if [ -n \"$pids\" ]; then echo \"$pids\" | xargs kill -9 || true; fi;"
 	    -- Rehash the root-owned copy in a clean environment before staging bytes.
-	    set prepare_verified to "verified_dir=$(/usr/bin/mktemp -d /tmp/.rustdeskupdate-verified.XXXXXX); /bin/chmod 0700 \"$verified_dir\"; verified_app=\"$verified_dir/" & app_name & ".app\"; dmg_attached=0; if [ -n " & expected_sha256_q & " ]; then verified_dmg=\"$verified_dir/update.dmg\"; /bin/cp " & source_path_q & " \"$verified_dmg\"; /usr/sbin/chown root:wheel \"$verified_dmg\"; /bin/chmod 0400 \"$verified_dmg\"; actual_sha256=$(/usr/bin/env -i /usr/bin/shasum -a 256 \"$verified_dmg\"); actual_sha256=${actual_sha256%% *}; if [ \"$actual_sha256\" != " & expected_sha256_q & " ]; then echo 'Update DMG SHA256 mismatch' >&2; exit 1; fi; dmg_mount=\"$verified_dir/mount\"; /bin/mkdir \"$dmg_mount\"; dmg_attached=1; /usr/bin/hdiutil attach -readonly -nobrowse -mountpoint \"$dmg_mount\" \"$verified_dmg\" >/dev/null; /usr/bin/ditto \"$dmg_mount/" & app_name & ".app\" \"$verified_app\"; /usr/bin/hdiutil detach \"$dmg_mount\" -force >/dev/null; dmg_attached=0; /bin/rm -f \"$verified_dmg\"; else /usr/bin/ditto " & source_path_q & " \"$verified_app\"; fi; /usr/sbin/chown -R root:wheel \"$verified_app\"; /bin/chmod -R go-w \"$verified_app\";"
+	    set prepare_verified to "verified_dir=$(/usr/bin/mktemp -d /tmp/.tensordeskupdate-verified.XXXXXX); /bin/chmod 0700 \"$verified_dir\"; verified_app=\"$verified_dir/" & app_name & ".app\"; dmg_attached=0; if [ -n " & expected_sha256_q & " ]; then verified_dmg=\"$verified_dir/update.dmg\"; /bin/cp " & source_path_q & " \"$verified_dmg\"; /usr/sbin/chown root:wheel \"$verified_dmg\"; /bin/chmod 0400 \"$verified_dmg\"; actual_sha256=$(/usr/bin/env -i /usr/bin/shasum -a 256 \"$verified_dmg\"); actual_sha256=${actual_sha256%% *}; if [ \"$actual_sha256\" != " & expected_sha256_q & " ]; then echo 'Update DMG SHA256 mismatch' >&2; exit 1; fi; dmg_mount=\"$verified_dir/mount\"; /bin/mkdir \"$dmg_mount\"; dmg_attached=1; /usr/bin/hdiutil attach -readonly -nobrowse -mountpoint \"$dmg_mount\" \"$verified_dmg\" >/dev/null; /usr/bin/ditto \"$dmg_mount/" & app_name & ".app\" \"$verified_app\"; /usr/bin/hdiutil detach \"$dmg_mount\" -force >/dev/null; dmg_attached=0; /bin/rm -f \"$verified_dmg\"; else /usr/bin/ditto " & source_path_q & " \"$verified_app\"; fi; /usr/sbin/chown -R root:wheel \"$verified_app\"; /bin/chmod -R go-w \"$verified_app\";"
 	    set validate_verified_app to "candidate_bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' \"$verified_app/Contents/Info.plist\"); if [ -z " & expected_bundle_id_q & " ] || [ \"$candidate_bundle_id\" != " & expected_bundle_id_q & " ]; then echo 'Update app bundle identifier mismatch' >&2; exit 1; fi; if [ -e " & app_bundle_q & " ]; then installed_bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' " & installed_info_q & "); if [ \"$installed_bundle_id\" != " & expected_bundle_id_q & " ]; then echo 'Installed app bundle identifier mismatch' >&2; exit 1; fi; fi;"
 	    set prepare_swap_paths to "temp_bundle=" & app_bundle_q & ".new.$$; old_bundle=" & app_bundle_q & ".old.$$;"
 	    set cleanup_swap_paths to "rm -rf \"$temp_bundle\" \"$old_bundle\";"
@@ -1170,7 +1170,7 @@ pub fn update_from_dmg_as_root(dmg_path: &str, expected_version: &str) -> Result
     validate_install_app_name(&app_name)?;
     let app_bundle = format!("/Applications/{}.app", app_name);
     let tmp_dir_output = std::process::Command::new("/usr/bin/mktemp")
-        .args(&["-d", "/tmp/.rustdeskupdate-root-XXXXXX"])
+        .args(&["-d", "/tmp/.tensordeskupdate-root-XXXXXX"])
         .output()?;
     let tmp_dir = String::from_utf8(tmp_dir_output.stdout)
         .map_err(|e| anyhow!("[root-update] mktemp output error: {}", e))?
@@ -1318,7 +1318,7 @@ pub fn update_from_dmg_as_root(dmg_path: &str, expected_version: &str) -> Result
     // so we spawn a script that waits, kills processes, copies, and restarts.
     let daemon_label = format!("com.carriez.{}_service", app_name);
     let agent_label = format!("com.carriez.{}_server", app_name);
-    let script_path = format!("{}/rustdesk_update.sh", tmp_dir);
+    let script_path = format!("{}/tensordesk_update.sh", tmp_dir);
     let script = format!(
         r#"#!/bin/sh
 rollback_done=0
@@ -1649,7 +1649,7 @@ rollback_transaction() {{
     restore_old_bundle || restore_failed=1
     cp "{daemon_plist_bak}" "{daemon_plist}" || restore_failed=1
     cp "{agent_plist_bak}" "{agent_plist}" || restore_failed=1
-    touch /var/root/.rustdeskupdate_failed || restore_failed=1
+    touch /var/root/.tensordeskupdate_failed || restore_failed=1
     if ! launchctl load -w "{daemon_plist}" 2>/dev/null && \
        ! launchctl bootstrap system "{daemon_plist}" 2>/dev/null; then
         restore_failed=1

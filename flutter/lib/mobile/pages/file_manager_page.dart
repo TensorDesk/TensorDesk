@@ -354,7 +354,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
                             Icon(Icons.storage_outlined,
                                 color: Theme.of(context).iconTheme.color),
                             SizedBox(width: 5),
-                            Text(translate('RustDesk storage')),
+                            Text(translate('TensorDesk storage')),
                           ],
                         ),
                       ),

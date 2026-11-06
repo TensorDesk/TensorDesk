@@ -1,4 +1,4 @@
-Name:       rustdesk
+Name:       tensordesk
 Version:    1.5.1
 Release:    0
 Summary:    RPM package
@@ -24,21 +24,21 @@ The best open-source remote desktop client software, written in Rust.
 
 %install
 
-mkdir -p "%{buildroot}/usr/share/rustdesk" && cp -r ${HBB}/flutter/build/linux/x64/release/bundle/* -t "%{buildroot}/usr/share/rustdesk"
+mkdir -p "%{buildroot}/usr/share/tensordesk" && cp -r ${HBB}/flutter/build/linux/x64/release/bundle/* -t "%{buildroot}/usr/share/tensordesk"
 mkdir -p "%{buildroot}/usr/bin"
-install -Dm 644 $HBB/res/rustdesk.service -t "%{buildroot}/usr/share/rustdesk/files"
-install -Dm 644 $HBB/res/rustdesk.desktop -t "%{buildroot}/usr/share/rustdesk/files"
-install -Dm 644 $HBB/res/rustdesk-link.desktop -t "%{buildroot}/usr/share/rustdesk/files"
-install -Dm 644 $HBB/res/128x128@2x.png "%{buildroot}/usr/share/icons/hicolor/256x256/apps/rustdesk.png"
-install -Dm 644 $HBB/res/scalable.svg "%{buildroot}/usr/share/icons/hicolor/scalable/apps/rustdesk.svg"
+install -Dm 644 $HBB/res/tensordesk.service -t "%{buildroot}/usr/share/tensordesk/files"
+install -Dm 644 $HBB/res/tensordesk.desktop -t "%{buildroot}/usr/share/tensordesk/files"
+install -Dm 644 $HBB/res/tensordesk-link.desktop -t "%{buildroot}/usr/share/tensordesk/files"
+install -Dm 644 $HBB/res/128x128@2x.png "%{buildroot}/usr/share/icons/hicolor/256x256/apps/tensordesk.png"
+install -Dm 644 $HBB/res/scalable.svg "%{buildroot}/usr/share/icons/hicolor/scalable/apps/tensordesk.svg"
 
 %files
-/usr/share/rustdesk/*
-/usr/share/rustdesk/files/rustdesk.service
-/usr/share/icons/hicolor/256x256/apps/rustdesk.png
-/usr/share/icons/hicolor/scalable/apps/rustdesk.svg
-/usr/share/rustdesk/files/rustdesk.desktop
-/usr/share/rustdesk/files/rustdesk-link.desktop
+/usr/share/tensordesk/*
+/usr/share/tensordesk/files/tensordesk.service
+/usr/share/icons/hicolor/256x256/apps/tensordesk.png
+/usr/share/icons/hicolor/scalable/apps/tensordesk.svg
+/usr/share/tensordesk/files/tensordesk.desktop
+/usr/share/tensordesk/files/tensordesk-link.desktop
 
 %changelog
 # let's skip this for now
@@ -51,27 +51,27 @@ case "$1" in
   ;;
   2)
     # for upgrade
-    systemctl stop rustdesk || true
+    systemctl stop tensordesk || true
   ;;
 esac
 
 %post
-cp /usr/share/rustdesk/files/rustdesk.service /etc/systemd/system/rustdesk.service
-cp /usr/share/rustdesk/files/rustdesk.desktop /usr/share/applications/
-cp /usr/share/rustdesk/files/rustdesk-link.desktop /usr/share/applications/
-ln -sf /usr/share/rustdesk/rustdesk /usr/bin/rustdesk
+cp /usr/share/tensordesk/files/tensordesk.service /etc/systemd/system/tensordesk.service
+cp /usr/share/tensordesk/files/tensordesk.desktop /usr/share/applications/
+cp /usr/share/tensordesk/files/tensordesk-link.desktop /usr/share/applications/
+ln -sf /usr/share/tensordesk/tensordesk /usr/bin/tensordesk
 systemctl daemon-reload
-systemctl enable rustdesk
-systemctl start rustdesk
+systemctl enable tensordesk
+systemctl start tensordesk
 update-desktop-database
 
 %preun
 case "$1" in
   0)
     # for uninstall
-    systemctl stop rustdesk || true
-    systemctl disable rustdesk || true
-    rm /etc/systemd/system/rustdesk.service || true
+    systemctl stop tensordesk || true
+    systemctl disable tensordesk || true
+    rm /etc/systemd/system/tensordesk.service || true
   ;;
   1)
     # for upgrade
@@ -82,17 +82,17 @@ esac
 case "$1" in
   0)
     # for uninstall
-    rm /usr/bin/rustdesk || true
-    rmdir /usr/lib/rustdesk || true
-    rmdir /usr/local/rustdesk || true
-    rmdir /usr/share/rustdesk || true
-    rm /usr/share/applications/rustdesk.desktop || true
-    rm /usr/share/applications/rustdesk-link.desktop || true
+    rm /usr/bin/tensordesk || true
+    rmdir /usr/lib/tensordesk || true
+    rmdir /usr/local/tensordesk || true
+    rmdir /usr/share/tensordesk || true
+    rm /usr/share/applications/tensordesk.desktop || true
+    rm /usr/share/applications/tensordesk-link.desktop || true
     update-desktop-database
   ;;
   1)
     # for upgrade
-    rmdir /usr/lib/rustdesk || true
-    rmdir /usr/local/rustdesk || true
+    rmdir /usr/lib/tensordesk || true
+    rmdir /usr/local/tensordesk || true
   ;;
 esac

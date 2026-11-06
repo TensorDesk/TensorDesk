@@ -174,7 +174,7 @@ internal class DocumentLogs(private val context: Context) {
 
     private fun openNext(grant: Uri) {
         closeOutput()
-        val name = "rustdesk-${System.currentTimeMillis()}-${UUID.randomUUID()}.txt"
+        val name = "tensordesk-${System.currentTimeMillis()}-${UUID.randomUUID()}.txt"
         val document = DocumentsContract.createDocument(
             resolver, ensureDirectory(grant), "text/plain", name)
             ?: throw IOException("Unable to create a log file")
@@ -256,6 +256,6 @@ internal class DocumentLogs(private val context: Context) {
             Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         private const val MAX_LOG_BYTES = 16L * 1024 * 1024
         private const val MAX_LOG_FILES = 90
-        private val LOG_NAME = Regex("rustdesk-[0-9]+-[0-9a-f-]{36}\\.txt")
+        private val LOG_NAME = Regex("tensordesk-[0-9]+-[0-9a-f-]{36}\\.txt")
     }
 }

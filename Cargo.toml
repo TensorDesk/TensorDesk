@@ -4,13 +4,17 @@ version = "1.5.1"
 authors = ["rustdesk <info@rustdesk.com>"]
 edition = "2021"
 build= "build.rs"
-description = "RustDesk Remote Desktop"
-default-run = "rustdesk"
+description = "TensorDesk Remote Desktop"
+default-run = "tensordesk"
 rust-version = "1.75"
 
 [lib]
 name = "librustdesk"
 crate-type = ["cdylib", "staticlib", "rlib"]
+
+[[bin]]
+name = "tensordesk"
+path = "src/main.rs"
 
 [[bin]]
 name = "naming"
@@ -257,9 +261,9 @@ webrtc-sctp = { git = "https://github.com/rustdesk-org/webrtc", rev = "49c89bd8d
 
 [package.metadata.winres]
 LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved."
-ProductName = "RustDesk"
-FileDescription = "RustDesk Remote Desktop"
-OriginalFilename = "rustdesk.exe"
+ProductName = "TensorDesk"
+FileDescription = "TensorDesk Remote Desktop"
+OriginalFilename = "tensordesk.exe"
 
 [target.'cfg(target_os="windows")'.build-dependencies]
 winres = "0.1"
@@ -276,8 +280,8 @@ docopt = "1.1"
 tokio = "1.44"
 
 [package.metadata.bundle]
-name = "RustDesk"
-identifier = "com.carriez.rustdesk"
+name = "TensorDesk"
+identifier = "com.tensordesk.tensordesk"
 icon = ["res/32x32.png", "res/128x128.png", "res/128x128@2x.png"]
 osx_minimum_system_version = "10.14"
 

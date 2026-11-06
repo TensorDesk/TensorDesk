@@ -19,7 +19,7 @@ fn get_update_temp_dir() -> PathBuf {
 fn new_update_temp_dir() -> PathBuf {
     let euid = unsafe { hbb_common::libc::geteuid() };
     Path::new("/tmp").join(format!(
-        ".rustdeskupdate-{}-{}-{}",
+        ".tensordeskupdate-{}-{}-{}",
         euid,
         std::process::id(),
         hbb_common::rand::random::<u64>()
@@ -28,12 +28,12 @@ fn new_update_temp_dir() -> PathBuf {
 
 fn legacy_update_temp_dir() -> PathBuf {
     let euid = unsafe { hbb_common::libc::geteuid() };
-    Path::new("/tmp").join(format!(".rustdeskupdate-{}", euid))
+    Path::new("/tmp").join(format!(".tensordeskupdate-{}", euid))
 }
 
 fn stale_update_temp_dir_prefix() -> String {
     let euid = unsafe { hbb_common::libc::geteuid() };
-    format!(".rustdeskupdate-{}-", euid)
+    format!(".tensordeskupdate-{}-", euid)
 }
 
 fn is_stale_update_temp_dir_name(name: &str) -> bool {

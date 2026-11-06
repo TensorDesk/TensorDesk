@@ -3251,7 +3251,7 @@ mod tests {
     fn test_api_server_from_bare_ipv6_rendezvous_server() {
         assert_eq!(
             get_api_server_("".to_owned(), "2001:db8::1".to_owned()),
-            "http://[2001:db8::1]:21114"
+            format!("http://[2001:db8::1]:{}", config::RENDEZVOUS_PORT - 2)
         );
     }
 

@@ -76,7 +76,7 @@ CustomAlertDialog _setupDialog(void Function([dynamic]) close) {
               OutlinedButton(
                 style: choiceStyle,
                 onPressed: () => close(_FolderChoice.workspace),
-                child: Text(translate('RustDesk storage')),
+                child: Text(translate('TensorDesk storage')),
               ),
               const SizedBox(height: _folderChoiceSpacing),
               OutlinedButton(
