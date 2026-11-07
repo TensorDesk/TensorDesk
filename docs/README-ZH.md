@@ -1,6 +1,5 @@
 <p align="center">
-  <img src="../res/logo-header.svg" alt="RustDesk - Your remote desktop"><br>
-  <a href="#免费的公共服务器">服务器</a> •
+  <img src="../res/logo-header.svg" alt="TensorDesk - 智能远程桌面，极致低流量传输"><br>
   <a href="#基本构建步骤">编译</a> •
   <a href="#使用-Docker-编译">Docker</a> •
   <a href="#文件结构">结构</a> •
@@ -10,35 +9,43 @@
 
 > [!CAUTION]
 > **免责声明:** <br>
-> RustDesk 的开发人员不纵容或支持任何不道德或非法的软件使用行为。滥用行为，例如未经授权的访问、控制或侵犯隐私，严格违反我们的准则。作者对应用程序的任何滥用行为概不负责。
+> TensorDesk 的开发人员不纵容或支持任何不道德或非法的软件使用行为。滥用行为，例如未经授权的访问、控制或侵犯隐私，严格违反我们的准则。作者对应用程序的任何滥用行为概不负责。
 
-与我们交流: [知乎](https://www.zhihu.com/people/rustdesk) | [Discord](https://discord.gg/nDceKgxnkV) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
+> [!NOTE]
+> **合规提醒：** 中国大陆用户请遵守《中华人民共和国计算机信息网络国际联网管理暂行规定》等法律法规，合规使用本软件。
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-%E9%AB%98%E7%BA%A7%E5%8A%9F%E8%83%BD-blue)](https://rustdesk.com/pricing.html)
+**TensorDesk** 是一款开源远程桌面软件，基于 [RustDesk](https://github.com/rustdesk/rustdesk) 深度优化，使用 Rust 编写。它在保留 RustDesk 全部能力的基础上，围绕一个目标重构了传输层：**让常驻连接的流量降到最低**。所有会话由 TensorDesk SaaS 控制台统一管理——设备、成员、会话与计费一站搞定。
 
-远程桌面软件，开箱即用，无需任何配置。您完全掌控数据，不用担心安全问题。您可以使用我们的注册/中继服务器，
-或者[自己设置](https://rustdesk.com/server)，
-亦或者[开发您的版本](https://github.com/rustdesk/rustdesk-server-demo)。
+## 为什么选择 TensorDesk：极致低流量
+
+当远端画面几乎不变时，TensorDesk 会把流量压到接近心跳的水平：
+
+- **观看端挂起（Viewer Suspend）** —— 观看端一段时间无输入时自动挂起视频流，仅保留心跳；恢复输入即时强制关键帧，秒级回画面。
+- **小变化动态节流** —— 光标闪烁、时钟跳动等微小画面变化触发自动降帧降码率，不为「无效像素」浪费带宽。
+- **帧率下限语义化** —— 自动帧率调节下限为 5fps，1–4fps 保留为挂起语义，避免低性能客户端被永久锁帧。
+- **30 秒增量重连缓冲** —— 断线 30 秒内重连直接续传增量帧，无需全量关键帧重传。
+
+**每天最低流量对比（估算）**
+
+| 场景 | RustDesk 原版 | TensorDesk |
+| --- | --- | --- |
+| 空闲办公桌面常驻 24 小时 | 约 0.5–2 GB/天 | **约 10–50 MB/天**（流量节省 90% 以上） |
+
+<sub>估算值：假设典型办公桌面存在时钟、光标闪烁等微小变化；实际流量取决于画面内容，仅供量级参考。</sub>
+
+[**正式版下载**](https://github.com/TensorDesk/TensorDesk/releases)
+
+[**每日构建版**](https://github.com/TensorDesk/TensorDesk/releases/tag/nightly)
+
+TensorDesk 期待各位的贡献。如何参与开发？详情请看 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
 
-RustDesk 期待各位的贡献. 如何参与开发? 详情请看 [CONTRIBUTING-ZH.md](CONTRIBUTING-ZH.md).
-
-[**FAQ**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
-
-[**BINARY DOWNLOAD**](https://github.com/rustdesk/rustdesk/releases)
-
-[**NIGHTLY BUILD**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
-
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
-
 ## 依赖
 
-桌面版本使用 Flutter 或 Sciter（已弃用）作为 GUI，本教程仅适用于 Sciter，因为它更简单且更易于上手。查看我们的[CI](https://github.com/rustdesk/rustdesk/blob/master/.github/workflows/flutter-build.yml)以构建 Flutter 版本。
+桌面版本使用 Flutter 或 Sciter（已弃用）作为 GUI，本教程仅适用于 Sciter，因为它更简单且更易于上手。查看我们的 [CI](https://github.com/TensorDesk/TensorDesk/blob/master/.github/workflows/flutter-build.yml) 以构建 Flutter 版本。
 
-请自行下载Sciter动态库。
+请自行下载 Sciter 动态库。
 
 [Windows](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.win/x64/sciter.dll) |
 [Linux](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so) |
@@ -48,14 +55,12 @@ RustDesk 期待各位的贡献. 如何参与开发? 详情请看 [CONTRIBUTING-Z
 
 - 请准备好 Rust 开发环境和 C++ 编译环境
 
-- 安装 [vcpkg](https://github.com/microsoft/vcpkg), 正确设置 `VCPKG_ROOT` 环境变量
+- 安装 [vcpkg](https://github.com/microsoft/vcpkg)，正确设置 `VCPKG_ROOT` 环境变量
 
   - Windows: vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
   - Linux/macOS: vcpkg install libvpx libyuv opus aom
 
 - 运行 `cargo run`
-
-## [构建](https://rustdesk.com/docs/en/dev/build/)
 
 ## 在 Linux 上编译
 
@@ -67,7 +72,7 @@ sudo apt install -y zip g++ gcc git curl wget nasm yasm libgtk-3-dev clang libxc
         libclang-dev ninja-build libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 ```
 
-### openSUSE Tumbleweed 
+### openSUSE Tumbleweed
 
 ```sh
 sudo zypper install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-devel libXfixes-devel cmake alsa-lib-devel gstreamer-devel gstreamer-plugins-base-devel xdotool-devel
@@ -76,7 +81,7 @@ sudo zypper install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-
 ### Fedora 28 (CentOS 8)
 
 ```sh
-sudo yum -y install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-devel libxdo-devel libXfixes-devel pulseaudio-libs-devel cmake alsa-lib-devel
+sudo yum -y install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-devel libxdo-devel libXfixes-devel pulseaudio-libs-devel cmake alsa-lib-devel gstreamer1-devel gstreamer1-plugins-base-devel
 ```
 
 ### Arch (Manjaro)
@@ -97,7 +102,7 @@ export VCPKG_ROOT=$HOME/vcpkg
 vcpkg/vcpkg install libvpx libyuv opus aom
 ```
 
-### 修复 libvpx (仅仅针对 Fedora)
+### 修复 libvpx（仅仅针对 Fedora）
 
 ```sh
 cd vcpkg/buildtrees/libvpx/src
@@ -115,8 +120,8 @@ cd
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
-git clone https://github.com/rustdesk/rustdesk
-cd rustdesk
+git clone --recurse-submodules https://github.com/TensorDesk/TensorDesk
+cd TensorDesk
 mkdir -p target/debug
 wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
 mv libsciter-gtk.so target/debug
@@ -125,25 +130,25 @@ VCPKG_ROOT=$HOME/vcpkg cargo run
 
 ## 使用 Docker 编译
 
-克隆版本库并构建 Docker 容器:
+克隆版本库并构建 Docker 容器：
 
 ```sh
-git clone https://github.com/rustdesk/rustdesk # 克隆Github存储库
-cd rustdesk # 进入文件夹
-docker build -t "rustdesk-builder" . # 构建容器
+git clone https://github.com/TensorDesk/TensorDesk # 克隆 GitHub 存储库
+cd TensorDesk # 进入文件夹
+docker build -t "tensordesk-builder" . # 构建容器
 ```
 
 请注意：
-* 针对国内网络访问问题，可以做以下几点优化：  
+* 针对国内网络访问问题，可以做以下几点优化：
    1. Dockerfile 中修改系统的源到国内镜像
       ```
       在Dockerfile的RUN apt update之前插入两行：
-   
+
       RUN sed -i "s|deb.debian.org|mirrors.aliyun.com|g" /etc/apt/sources.list && \
           sed -i "s|security.debian.org|mirrors.aliyun.com|g" /etc/apt/sources.list
       ```
 
-   2. 修改容器系统中的 cargo 源，在`RUN ./rustup.sh -y`后插入下面代码：
+   2. 修改容器系统中的 cargo 源，在 `RUN ./rustup.sh -y` 后插入下面代码：
 
       ```
       RUN echo '[source.crates-io]' > ~/.cargo/config \
@@ -168,58 +173,59 @@ docker build -t "rustdesk-builder" . # 构建容器
    4. docker build 命令后面加上 proxy 参数
 
       ```
-      docker build -t "rustdesk-builder" . --build-arg http_proxy=http://host:port --build-arg https_proxy=http://host:port
+      docker build -t "tensordesk-builder" . --build-arg http_proxy=http://host:port --build-arg https_proxy=http://host:port
       ```
 
-### 构建 RustDesk 程序
+### 构建 TensorDesk 程序
 
-然后, 每次需要构建应用程序时, 运行以下命令:
+然后，每次需要构建应用程序时，运行以下命令：
 
 ```sh
-docker run --rm -it -v $PWD:/home/user/rustdesk -v rustdesk-git-cache:/home/user/.cargo/git -v rustdesk-registry-cache:/home/user/.cargo/registry -e PUID="$(id -u)" -e PGID="$(id -g)" rustdesk-builder
+docker run --rm -it -v $PWD:/home/user/rustdesk -v tensordesk-git-cache:/home/user/.cargo/git -v tensordesk-registry-cache:/home/user/.cargo/registry -e PUID="$(id -u)" -e PGID="$(id -g)" tensordesk-builder
 ```
 
-请注意:  
-* 因为需要缓存依赖项，首次构建一般很慢（国内网络会经常出现拉取失败，可以多试几次）。  
-* 如果您需要添加不同的构建参数，可以在指令末尾的`<OPTIONAL-ARGS>` 位置进行修改。例如构建一个"Release"版本，在指令后面加上` --release`即可。
-* 如果出现以下的提示，则是无权限问题，可以尝试把`-e PUID="$(id -u)" -e PGID="$(id -g)"`参数去掉。
+请注意：
+* 因为需要缓存依赖项，首次构建一般很慢（国内网络会经常出现拉取失败，可以多试几次）。
+* 如果您需要添加不同的构建参数，可以在指令末尾的 `<OPTIONAL-ARGS>` 位置进行修改。例如构建一个 Release 版本，在指令后面加上 ` --release` 即可。
+* 如果出现以下的提示，则是无权限问题，可以尝试把 `-e PUID="$(id -u)" -e PGID="$(id -g)"` 参数去掉。
    ```
    usermod: user user is currently used by process 1
    groupmod: Permission denied.
    groupmod: cannot lock /etc/group; try again later.
    ```
-   > **原因：** 容器的 entrypoint 脚本会检测 UID 和 GID，在度判和给定的环境变量的不一致时，会强行修改 user 的 UID 和 GID 并重新运行。但在重启后读不到环境中的 UID 和 GID，然后再次进入判错重启环节
+   > **原因：** 容器的 entrypoint 脚本会检测 UID 和 GID，在判定和给定的环境变量不一致时，会强行修改 user 的 UID 和 GID 并重新运行。但在重启后读不到环境中的 UID 和 GID，然后再次进入判错重启环节
 
+### 运行 TensorDesk 程序
 
-### 运行 RustDesk 程序
+生成的可执行程序在 target 目录下，可直接通过指令运行调试（Debug）版本：
 
-生成的可执行程序在 target 目录下，可直接通过指令运行调试 (Debug) 版本的 RustDesk:
 ```sh
 target/debug/rustdesk
 ```
 
-或者您想运行发行 (Release) 版本:
+或者您想运行发行（Release）版本：
 
 ```sh
 target/release/rustdesk
 ```
 
 请注意：
-* 请保证您运行的目录是在 RustDesk 库的根目录内，否则软件会读不到文件。
-* `install`、`run`等 Cargo 的子指令在容器内不可用，宿主机才行。
+* 请保证您运行的目录是在仓库的根目录内，否则软件会读不到文件。
+* `install`、`run` 等 Cargo 的子指令在容器内不可用，宿主机才行。
 
 ## 文件结构
 
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: 视频编解码, 配置, tcp/udp 封装, protobuf, 文件传输相关文件系统操作函数, 以及一些其他实用函数
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: 屏幕截取
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: 平台相关的鼠标键盘输入
-- **[libs/clipboard](https://github.com/rustdesk/rustdesk/tree/master/libs/clipboard)**: Windows、Linux、macOS 的文件复制和粘贴实现
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: 过时的 Sciter UI（已弃用）
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: 被控端服务音频、剪切板、输入、视频服务、网络连接的实现
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: 控制端
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: 与[rustdesk-server](https://github.com/rustdesk/rustdesk-server)保持UDP通讯, 等待远程连接（通过打洞直连或者中继）
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: 平台服务相关代码
-- **[flutter](https://github.com/rustdesk/rustdesk/tree/master/flutter)**: 适用于桌面和移动设备的 Flutter 代码
+- **[libs/hbb_common](https://github.com/TensorDesk/TensorDesk/tree/master/libs/hbb_common)**: 视频编解码、配置、tcp/udp 封装，以及与服务端共享的其他实用函数
+- **[libs/base](https://github.com/TensorDesk/TensorDesk/tree/master/libs/base)**: protobuf、文件传输相关文件系统操作函数、仅本应用使用的键盘与平台代码
+- **[libs/scrap](https://github.com/TensorDesk/TensorDesk/tree/master/libs/scrap)**: 屏幕截取
+- **[libs/enigo](https://github.com/TensorDesk/TensorDesk/tree/master/libs/enigo)**: 平台相关的鼠标键盘输入
+- **[libs/clipboard](https://github.com/TensorDesk/TensorDesk/tree/master/libs/clipboard)**: Windows、Linux、macOS 的文件复制和粘贴实现
+- **[src/ui](https://github.com/TensorDesk/TensorDesk/tree/master/src/ui)**: 过时的 Sciter UI（已弃用）
+- **[src/server](https://github.com/TensorDesk/TensorDesk/tree/master/src/server)**: 被控端音频、剪切板、输入、视频服务与网络连接的实现
+- **[src/client.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/client.rs)**: 控制端
+- **[src/rendezvous_mediator.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/rendezvous_mediator.rs)**: 与注册/中继服务器保持通讯，等待远程连接（打洞直连或中继）
+- **[src/platform](https://github.com/TensorDesk/TensorDesk/tree/master/src/platform)**: 平台相关代码
+- **[flutter](https://github.com/TensorDesk/TensorDesk/tree/master/flutter)**: 适用于桌面和移动设备的 Flutter 代码
 
 ## 截图
 

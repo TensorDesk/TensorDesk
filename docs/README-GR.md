@@ -1,33 +1,31 @@
+> [!NOTE]
+> This translation is based on an older upstream version and may be outdated. Branding and links now point to **TensorDesk**; for the latest features (ultra-low bandwidth transport), see the [English README](../README.md).
+
 <p align="center">
-  <img src="../res/logo-header.svg" alt="RustDesk - Your remote desktop"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - Your remote desktop"><br>
   <a href="#Δωρεάν-δημόσιοι-διακομιστές">Διακομιστές</a> •
   <a href="#Γενικά-βήματα-ώστε-να-κάνετε-build">Build</a> •
   <a href="#Πως-να-κάνετε-build-στο-Docker">Docker</a> •
   <a href="#Δομή-φακέλων">Δομή</a> •
   <a href="#Στιγμιότυπα">Στιγμιότυπα</a><br>
   [<a href="../README.md">English</a>] | [<a href="README-UA.md">Українська</a>] | [<a href="README-CS.md">česky</a>] | [<a href="README-ZH.md">中文</a>] | | [<a href="README-HU.md">Magyar</a>] | [<a href="README-ES.md">Español</a>] | [<a href="README-FA.md">فارسی</a>] | [<a href="README-FR.md">Français</a>] | [<a href="README-DE.md">Deutsch</a>] | [<a href="README-PL.md">Polski</a>] | [<a href="README-ID.md">Indonesian</a>] | [<a href="README-FI.md">Suomi</a>] | [<a href="README-ML.md">മലയാളം</a>] | [<a href="README-JP.md">日本語</a>] | [<a href="README-NL.md">Nederlands</a>] | [<a href="README-IT.md">Italiano</a>] | [<a href="README-RU.md">Русский</a>] | [<a href="README-PTBR.md">Português (Brasil)</a>] | [<a href="README-EO.md">Esperanto</a>] | [<a href="README-KR.md">한국어</a>] | [<a href="README-AR.md">العربي</a>] | [<a href="README-VN.md">Tiếng Việt</a>] | [<a href="README-DA.md">Dansk</a>]<br>
-  <b>Χρειαζόμαστε τη βοήθειά σας για να μεταφράσουμε αυτό το αρχείο README, το <a href="https://github.com/rustdesk/rustdesk/tree/master/src/lang">RustDesk UI</a> και το <a href="https://github.com/rustdesk/doc.rustdesk.com">Doc</a> στη μητρική σας γλώσσα</b>
+  <b>Χρειαζόμαστε τη βοήθειά σας για να μεταφράσουμε αυτό το αρχείο README, το <a href="https://github.com/TensorDesk/TensorDesk/tree/master/src/lang">TensorDesk UI</a> και το <a href="https://github.com/rustdesk/doc.rustdesk.com">Doc</a> στη μητρική σας γλώσσα</b>
 </p>
 
-Επικοινωνήστε μαζί μας μέσω: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-%CE%A0%CF%81%CE%BF%CE%B7%CE%B3%CE%BC%CE%AD%CE%BD%CE%B5%CF%82%20%CE%94%CF%85%CE%BD%CE%B1%CF%84%CF%8C%CF%84%CE%B7%CF%84%CE%B5%CF%82-blue)](https://rustdesk.com/pricing.html)
 
 Ένα λογισμικό απομακρυσμένης επιφάνειας εργασίας, γραμμένο σε γλώσσα Rust. Δεν χρειάζεται κάποια παραμετροποίηση, λειτουργεί αμέσως μετά την εγκατάσταση. Έχετε τον πλήρη έλεγχο των δεδομένων σας, χωρίς να ανησυχείτε για την ασφάλειά τους. Μπορείτε να χρησιμοποιήσετε τους προκαθορισμένους διακομιστές rendezvous/αναμετάδοσης, [να εγκαταστήσετε τον δικό σας διακομιστή](https://rustdesk.com/server), ή [να αναπτύξετε ένα δικό σας διακομιστή rendezvous/αναμετάδοσης](https://github.com/rustdesk/rustdesk-server-demo).
 
 ![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
 
-Το RustDesk ενθαρρύνει τη συνεισφορά όλων. Διαβάστε το [`docs/CONTRIBUTING.md`](CONTRIBUTING.md) για βοήθεια στο πως να ξεκινήσετε.
+Το TensorDesk ενθαρρύνει τη συνεισφορά όλων. Διαβάστε το [`docs/CONTRIBUTING.md`](CONTRIBUTING.md) για βοήθεια στο πως να ξεκινήσετε.
 
-[**Συχνές ερωτήσεις**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
+[**Συχνές ερωτήσεις**](https://github.com/TensorDesk/TensorDesk/wiki/FAQ)
 
-[**Κατεβάστε τα αρχεία**](https://github.com/rustdesk/rustdesk/releases)
+[**Κατεβάστε τα αρχεία**](https://github.com/TensorDesk/TensorDesk/releases)
 
-[**NIGHTLY BUILD**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
+[**NIGHTLY BUILD**](https://github.com/TensorDesk/TensorDesk/releases/tag/nightly)
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
 
 ## Προαπαιτούμενα για build  
 
@@ -109,7 +107,7 @@ cd
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 mkdir -p target/debug
 wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
@@ -122,7 +120,7 @@ VCPKG_ROOT=$HOME/vcpkg cargo run
 Ξεκινήστε κλωνοποιώντας το αποθετήριο και κάνοντας build το docker container:
 
 ```sh
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 docker build -t "rustdesk-builder" .
 ```
@@ -145,19 +143,19 @@ target/debug/rustdesk
 target/release/rustdesk
 ```
 
-Βεβαιωθείτε ότι εκτελείτε αυτές τις εντολές από την αρχική διαδρομή του αποθετηρίου του RustDesk, διαφορετικά η εφαρμογή ενδέχεται να μην είναι σε θέση να βρεί τους απαιτούμενους πόρους. Σημειώστε επίσης ότι άλλες υποεντολές, όπως το `install` ή το `run` δεν υποστηρίζονται επί του παρόντος μέσω αυτής της μεθόδου καθώς θα εγκαταστήσουν ή θα εκτελέσουν το πρόγραμμα εντός του container αντί του κεντρικού υπολογιστή.
+Βεβαιωθείτε ότι εκτελείτε αυτές τις εντολές από την αρχική διαδρομή του αποθετηρίου του TensorDesk, διαφορετικά η εφαρμογή ενδέχεται να μην είναι σε θέση να βρεί τους απαιτούμενους πόρους. Σημειώστε επίσης ότι άλλες υποεντολές, όπως το `install` ή το `run` δεν υποστηρίζονται επί του παρόντος μέσω αυτής της μεθόδου καθώς θα εγκαταστήσουν ή θα εκτελέσουν το πρόγραμμα εντός του container αντί του κεντρικού υπολογιστή.
 
 ## Δομή φακέλων
 
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: video codec, config, tcp/udp wrapper, protobuf, fs functions for file transfer, and some other utility functions
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: screen capture
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: platform specific keyboard/mouse control
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: GUI
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: audio/clipboard/input/video services, and network connections
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: start a peer connection
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: Communicate with [rustdesk-server](https://github.com/rustdesk/rustdesk-server), wait for remote direct (TCP hole punching) or relayed connection
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: platform specific code
-- **[flutter](https://github.com/rustdesk/rustdesk/tree/master/flutter)**: Flutter code for mobile
+- **[libs/hbb_common](https://github.com/TensorDesk/TensorDesk/tree/master/libs/hbb_common)**: video codec, config, tcp/udp wrapper, protobuf, fs functions for file transfer, and some other utility functions
+- **[libs/scrap](https://github.com/TensorDesk/TensorDesk/tree/master/libs/scrap)**: screen capture
+- **[libs/enigo](https://github.com/TensorDesk/TensorDesk/tree/master/libs/enigo)**: platform specific keyboard/mouse control
+- **[src/ui](https://github.com/TensorDesk/TensorDesk/tree/master/src/ui)**: GUI
+- **[src/server](https://github.com/TensorDesk/TensorDesk/tree/master/src/server)**: audio/clipboard/input/video services, and network connections
+- **[src/client.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/client.rs)**: start a peer connection
+- **[src/rendezvous_mediator.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/rendezvous_mediator.rs)**: Communicate with [rustdesk-server](https://github.com/rustdesk/rustdesk-server), wait for remote direct (TCP hole punching) or relayed connection
+- **[src/platform](https://github.com/TensorDesk/TensorDesk/tree/master/src/platform)**: platform specific code
+- **[flutter](https://github.com/TensorDesk/TensorDesk/tree/master/flutter)**: Flutter code for mobile
 
 ## Στιγμιότυπα
 

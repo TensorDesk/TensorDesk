@@ -1,44 +1,39 @@
+> [!NOTE]
+> This translation is based on an older upstream version and may be outdated. Branding and links now point to **TensorDesk**; for the latest features (ultra-low bandwidth transport), see the [English README](../README.md).
+
 <p align="center">
-  <img src="../res/logo-header.svg" alt="RustDesk - O seu ambiente de trabalho remoto"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - O seu ambiente de trabalho remoto"><br>
   <a href="#compilar">Compilar</a> •
   <a href="#como-compilar-com-o-docker">Docker</a> •
   <a href="#estrutura-de-ficheiros">Estrutura</a> •
   <a href="#capturas-de-ecrã">Capturas de Ecrã</a><br>
   [<a href="../README.md">Inglês</a>] | [<a href="README-UA.md">Ucraniano</a>] | [<a href="README-CS.md">Checo</a>] | [<a href="README-ZH.md">Chinês</a>] | [<a href="README-HU.md">Húngaro</a>] | [<a href="README-ES.md">Espanhol</a>] | [<a href="README-FA.md">Persa</a>] | [<a href="README-FR.md">Francês</a>] | [<a href="README-DE.md">Alemão</a>] | [<a href="README-PL.md">Polaco</a>] | [<a href="README-ID.md">Indonésio</a>] | [<a href="README-FI.md">Finlandês</a>] | [<a href="README-ML.md">Malaiala</a>] | [<a href="README-JP.md">Japonês</a>] | [<a href="README-NL.md">Holandês</a>] | [<a href="README-IT.md">Italiano</a>] | [<a href="README-RU.md">Russo</a>] | [<a href="README-EO.md">Esperanto</a>] | [<a href="README-KR.md">Coreano</a>] | [<a href="README-AR.md">Árabe</a>] | [<a href="README-VN.md">Vietnamita</a>] | [<a href="README-DA.md">Dinamarquês</a>] | [<a href="README-GR.md">Grego</a>] | [<a href="README-TR.md">Turco</a>] | [<a href="README-NO.md">Norueguês</a>] | [<a href="README-RO.md">Romeno</a>]<br>
-  <b>Precisamos da sua ajuda para traduzir este README, a <a href="https://github.com/rustdesk/rustdesk/tree/master/src/lang">Interface do RustDesk</a> e a <a href="https://github.com/rustdesk/doc.rustdesk.com">Documentação do RustDesk</a> para o seu idioma nativo</b>
+  <b>Precisamos da sua ajuda para traduzir este README, a <a href="https://github.com/TensorDesk/TensorDesk/tree/master/src/lang">Interface do TensorDesk</a> e a <a href="https://github.com/rustdesk/doc.rustdesk.com">Documentação do TensorDesk</a> para o seu idioma nativo</b>
 </p>
 
 > [!Caution]
 > **Aviso de Isenção de Responsabilidade por Uso Indevido:** <br>
-> Os programadores do RustDesk não toleram ou apoiam qualquer uso antiético ou ilegal deste software. O uso indevido, como acesso não autorizado, controlo ou invasão de privacidade, é estritamente contrário às nossas diretrizes. Os autores não se responsabilizam por qualquer uso indevido da aplicação.
+> Os programadores do TensorDesk não toleram ou apoiam qualquer uso antiético ou ilegal deste software. O uso indevido, como acesso não autorizado, controlo ou invasão de privacidade, é estritamente contrário às nossas diretrizes. Os autores não se responsabilizam por qualquer uso indevido da aplicação.
 
 
-Converse connosco: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-Advanced%20Features-blue)](https://rustdesk.com/pricing.html)
 
 Mais uma solução de ambiente de trabalho remoto, escrita em Rust. Funciona imediatamente, sem necessidade de configuração. Tem controlo total dos seus dados, sem preocupações com a segurança. Pode usar o nosso servidor de ligação/retransmissão (rendezvous/relay), [configurar o seu próprio](https://rustdesk.com/server) ou [escrever o seu próprio servidor de ligação/retransmissão](https://github.com/rustdesk/rustdesk-server-demo).
 
 ![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
 
-O RustDesk agradece as contribuições de todos. Veja [CONTRIBUTING.md](CONTRIBUTING.md) para obter ajuda para começar.
+O TensorDesk agradece as contribuições de todos. Veja [CONTRIBUTING.md](CONTRIBUTING.md) para obter ajuda para começar.
 
-[**Perguntas Frequentes (FAQ)**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
+[**Perguntas Frequentes (FAQ)**](https://github.com/TensorDesk/TensorDesk/wiki/FAQ)
 
-[**DOWNLOAD DOS BINÁRIOS**](https://github.com/rustdesk/rustdesk/releases)
+[**DOWNLOAD DOS BINÁRIOS**](https://github.com/TensorDesk/TensorDesk/releases)
 
-[**VERSÕES NIGHTLY (EM DESENVOLVIMENTO)**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
+[**VERSÕES NIGHTLY (EM DESENVOLVIMENTO)**](https://github.com/TensorDesk/TensorDesk/releases/tag/nightly)
 
-[<img src="https://f-droid.org/badge/get-it-on.png"
-    alt="Transfira no F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
-[<img src="https://flathub.org/api/badge?svg&locale=en"
-    alt="Transfira no Flathub"
-    height="80">](https://flathub.org/apps/com.rustdesk.RustDesk)
 
 ## Dependências
 
-As versões para ambiente de trabalho usam Flutter ou Sciter (descontinuado) para a interface gráfica (GUI). Este tutorial é apenas para o Sciter, por ser mais fácil e acessível para começar. Consulte o nosso [CI](https://github.com/rustdesk/rustdesk/blob/master/.github/workflows/flutter-build.yml) para instruções de compilação da versão Flutter.
+As versões para ambiente de trabalho usam Flutter ou Sciter (descontinuado) para a interface gráfica (GUI). Este tutorial é apenas para o Sciter, por ser mais fácil e acessível para começar. Consulte o nosso [CI](https://github.com/TensorDesk/TensorDesk/blob/master/.github/workflows/flutter-build.yml) para instruções de compilação da versão Flutter.
 
 Por favor transfira a biblioteca dinâmica do Sciter por conta própria.
 
@@ -115,7 +110,7 @@ cd
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
-git clone --recurse-submodules https://github.com/rustdesk/rustdesk
+git clone --recurse-submodules https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 mkdir -p target/debug
 wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
@@ -128,7 +123,7 @@ VCPKG_ROOT=$HOME/vcpkg cargo run
 Comece por clonar o repositório e construir o contentor Docker:
 
 ```sh
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 git submodule update --init --recursive
 docker build -t "rustdesk-builder" .
@@ -152,28 +147,28 @@ Ou, se estiver a correr o executável de lançamento:
 target/release/rustdesk
 ```
 
-Certifique-se de que executa estes comandos a partir da raiz do repositório do RustDesk, caso contrário a aplicação poderá não encontrar os recursos necessários. Note também que outros subcomandos do cargo, como `install` ou `run`, não são suportados atualmente por este método, pois instalariam ou executariam o programa dentro do contentor em vez de o fazerem no host.
+Certifique-se de que executa estes comandos a partir da raiz do repositório do TensorDesk, caso contrário a aplicação poderá não encontrar os recursos necessários. Note também que outros subcomandos do cargo, como `install` ou `run`, não são suportados atualmente por este método, pois instalariam ou executariam o programa dentro do contentor em vez de o fazerem no host.
 
 ## Estrutura de Ficheiros
 
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: codec de vídeo, configuração, wrapper TCP/UDP e algumas outras funções utilitárias partilhadas com o servidor
-- **[libs/base](https://github.com/rustdesk/rustdesk/tree/master/libs/base)**: protobuf, funções fs para transferência de ficheiros, código relacionado com o teclado e com a plataforma utilizado exclusivamente por esta aplicação
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: captura de ecrã
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: controlo de teclado/rato específico da plataforma.
-- **[libs/clipboard](https://github.com/rustdesk/rustdesk/tree/master/libs/clipboard)**: implementação de copiar e colar ficheiros para Windows, Linux e macOS.
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: interface Sciter obsoleta (descontinuada).
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: serviços de áudio, área de transferência, entrada e vídeo, e ligações de rede
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: inicia uma ligação entre pares
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: Comunica com o [rustdesk-server](https://github.com/rustdesk/rustdesk-server), aguarda por uma ligação direta remota (TCP hole punching) ou uma ligação retransmitida
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: código específico da plataforma
-- **[flutter](https://github.com/rustdesk/rustdesk/tree/master/flutter)**: código Flutter para ambiente de trabalho e dispositivos móveis
+- **[libs/hbb_common](https://github.com/TensorDesk/TensorDesk/tree/master/libs/hbb_common)**: codec de vídeo, configuração, wrapper TCP/UDP e algumas outras funções utilitárias partilhadas com o servidor
+- **[libs/base](https://github.com/TensorDesk/TensorDesk/tree/master/libs/base)**: protobuf, funções fs para transferência de ficheiros, código relacionado com o teclado e com a plataforma utilizado exclusivamente por esta aplicação
+- **[libs/scrap](https://github.com/TensorDesk/TensorDesk/tree/master/libs/scrap)**: captura de ecrã
+- **[libs/enigo](https://github.com/TensorDesk/TensorDesk/tree/master/libs/enigo)**: controlo de teclado/rato específico da plataforma.
+- **[libs/clipboard](https://github.com/TensorDesk/TensorDesk/tree/master/libs/clipboard)**: implementação de copiar e colar ficheiros para Windows, Linux e macOS.
+- **[src/ui](https://github.com/TensorDesk/TensorDesk/tree/master/src/ui)**: interface Sciter obsoleta (descontinuada).
+- **[src/server](https://github.com/TensorDesk/TensorDesk/tree/master/src/server)**: serviços de áudio, área de transferência, entrada e vídeo, e ligações de rede
+- **[src/client.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/client.rs)**: inicia uma ligação entre pares
+- **[src/rendezvous_mediator.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/rendezvous_mediator.rs)**: Comunica com o [rustdesk-server](https://github.com/rustdesk/rustdesk-server), aguarda por uma ligação direta remota (TCP hole punching) ou uma ligação retransmitida
+- **[src/platform](https://github.com/TensorDesk/TensorDesk/tree/master/src/platform)**: código específico da plataforma
+- **[flutter](https://github.com/TensorDesk/TensorDesk/tree/master/flutter)**: código Flutter para ambiente de trabalho e dispositivos móveis
 
 ## Capturas de Ecrã
 
-![Gestor de Ligações](https://github.com/rustdesk/rustdesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
+![Gestor de Ligações](https://github.com/TensorDesk/TensorDesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
 
-![Ligado a um PC Windows](https://github.com/rustdesk/rustdesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
+![Ligado a um PC Windows](https://github.com/TensorDesk/TensorDesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
 
-![Transferência de Ficheiros](https://github.com/rustdesk/rustdesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
+![Transferência de Ficheiros](https://github.com/TensorDesk/TensorDesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
 
-![Túnel TCP](https://github.com/rustdesk/rustdesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
+![Túnel TCP](https://github.com/TensorDesk/TensorDesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)

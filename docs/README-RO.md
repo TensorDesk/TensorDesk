@@ -1,44 +1,39 @@
+> [!NOTE]
+> This translation is based on an older upstream version and may be outdated. Branding and links now point to **TensorDesk**; for the latest features (ultra-low bandwidth transport), see the [English README](../README.md).
+
 <p align="center">
-  <img src="../res/logo-header.svg" alt="RustDesk - desktopul tău la distanță"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - desktopul tău la distanță"><br>
   <a href="../README.md#raw-steps-to-build">Construire</a> •
   <a href="../README.md#how-to-build-with-docker">Docker</a> •
   <a href="../README.md#file-structure">Structură</a> •
   <a href="../README.md#snapshot">Capturi</a><br>
   [<a href="README-UA.md">Українська</a>] | [<a href="README-CS.md">česky</a>] | [<a href="README-ZH.md">中文</a>] | [<a href="README-HU.md">Magyar</a>] | [<a href="README-ES.md">Español</a>] | [<a href="README-FA.md">فارسی</a>] | [<a href="README-FR.md">Français</a>] | [<a href="README-DE.md">Deutsch</a>] | [<a href="README-PL.md">Polski</a>] | [<a href="README-ID.md">Indonesian</a>] | [<a href="README-FI.md">Suomi</a>] | [<a href="README-ML.md">മലയാളം</a>] | [<a href="README-JP.md">日本語</a>] | [<a href="README-NL.md">Nederlands</a>] | [<a href="README-IT.md">Italiano</a>] | [<a href="README-RU.md">Русский</a>] | [<a href="README-PTBR.md">Português (Brasil)</a>] | [<a href="README-EO.md">Esperanto</a>] | [<a href="README-KR.md">한국어</a>] | [<a href="README-AR.md">العربي</a>] | [<a href="README-VN.md">Tiếng Việt</a>] | [<a href="README-DA.md">Dansk</a>] | [<a href="README-GR.md">Ελληνικά</a>] | [<a href="README-TR.md">Türkçe</a>] | [<a href="README-NO.md">Norsk</a>] | [<a href="README-RO.md">Română</a>]<br>
-  <b>Avem nevoie de ajutorul tău pentru a traduce acest README, <a href="https://github.com/rustdesk/rustdesk/tree/master/src/lang">RustDesk UI</a> și <a href="https://github.com/rustdesk/doc.rustdesk.com">RustDesk Doc</a> în limba ta maternă</b>
+  <b>Avem nevoie de ajutorul tău pentru a traduce acest README, <a href="https://github.com/TensorDesk/TensorDesk/tree/master/src/lang">TensorDesk UI</a> și <a href="https://github.com/rustdesk/doc.rustdesk.com">TensorDesk Doc</a> în limba ta maternă</b>
 </p>
 
 > [!Atenție]
 > **Declinare de responsabilitate privind utilizarea abuzivă:** <br>
-> Dezvoltatorii RustDesk nu susțin sau aprobă utilizarea neetică sau ilegală a acestui software. Utilizarea abuzivă, cum ar fi accesul neautorizat, controlul sau invadarea intimității, este strict împotriva regulilor noastre. Autorii nu sunt responsabili pentru utilizarea necorespunzătoare a aplicației.
+> Dezvoltatorii TensorDesk nu susțin sau aprobă utilizarea neetică sau ilegală a acestui software. Utilizarea abuzivă, cum ar fi accesul neautorizat, controlul sau invadarea intimității, este strict împotriva regulilor noastre. Autorii nu sunt responsabili pentru utilizarea necorespunzătoare a aplicației.
 
 
-Conversați cu noi: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-Advanced%20Features-blue)](https://rustdesk.com/pricing.html)
 
 Încă o soluție de desktop la distanță scrisă în Rust. Funcționează imediat, fără configurare necesară. Ai control total asupra datelor tale, fără probleme de securitate. Poți folosi serverul nostru de rendezvous/relay, [să-ți configurezi propriul server](https://rustdesk.com/server) sau [să scrii propriul server de rendezvous/relay](https://github.com/rustdesk/rustdesk-server-demo).
 
 ![imagine](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
 
-RustDesk primește contribuții de la oricine. Vezi [CONTRIBUTING.md](../docs/CONTRIBUTING.md) pentru ajutor la început.
+TensorDesk primește contribuții de la oricine. Vezi [CONTRIBUTING.md](../docs/CONTRIBUTING.md) pentru ajutor la început.
 
-[**ÎNTREBĂRI FRECVENTE (FAQ)**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
+[**ÎNTREBĂRI FRECVENTE (FAQ)**](https://github.com/TensorDesk/TensorDesk/wiki/FAQ)
 
-[**DESCĂRCARE BINARE**](https://github.com/rustdesk/rustdesk/releases)
+[**DESCĂRCARE BINARE**](https://github.com/TensorDesk/TensorDesk/releases)
 
-[**BUILD NIGHTLY**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
+[**BUILD NIGHTLY**](https://github.com/TensorDesk/TensorDesk/releases/tag/nightly)
 
-[<img src="https://f-droid.org/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
-[<img src="https://flathub.org/api/badge?svg&locale=en"
-    alt="Get it on Flathub"
-    height="80">](https://flathub.org/apps/com.rustdesk.RustDesk)
 
 ## Dependențe
 
-Versiunile desktop folosesc Flutter sau Sciter (depreciat) pentru interfață; acest ghid este pentru Sciter doar, deoarece este mai ușor și mai prietenos pentru început. Vezi [CI](https://github.com/rustdesk/rustdesk/blob/master/.github/workflows/flutter-build.yml) pentru construire cu Flutter.
+Versiunile desktop folosesc Flutter sau Sciter (depreciat) pentru interfață; acest ghid este pentru Sciter doar, deoarece este mai ușor și mai prietenos pentru început. Vezi [CI](https://github.com/TensorDesk/TensorDesk/blob/master/.github/workflows/flutter-build.yml) pentru construire cu Flutter.
 
 Te rugăm să descarci singur librăria dinamică Sciter.
 
@@ -117,7 +112,7 @@ cd
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
-git clone --recurse-submodules https://github.com/rustdesk/rustdesk
+git clone --recurse-submodules https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 mkdir -p target/debug
 wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
@@ -130,7 +125,7 @@ VCPKG_ROOT=$HOME/vcpkg cargo run
 Începe prin clonarea repository-ului și construirea imaginii Docker:
 
 ```sh
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 git submodule update --init --recursive
 docker build -t "rustdesk-builder" .
@@ -154,27 +149,27 @@ Sau, dacă rulezi un executabil release:
 target/release/rustdesk
 ```
 
-Asigură-te că rulezi aceste comenzi din rădăcina repository-ului RustDesk, altfel aplicația poate să nu găsească resursele necesare. De asemenea, reține că alte subcomenzi cargo, cum ar fi `install` sau `run`, nu sunt acceptate în prezent prin această metodă, deoarece ar instala sau rula programul în interiorul containerului în loc de gazdă.
+Asigură-te că rulezi aceste comenzi din rădăcina repository-ului TensorDesk, altfel aplicația poate să nu găsească resursele necesare. De asemenea, reține că alte subcomenzi cargo, cum ar fi `install` sau `run`, nu sunt acceptate în prezent prin această metodă, deoarece ar instala sau rula programul în interiorul containerului în loc de gazdă.
 
 ## Structura fișierelor
 
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: codec video, config, wrapper tcp/udp, protobuf, funcții fs pentru transfer de fișiere și alte funcții utilitare
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: capturare ecran
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: control tastatură/mouse specific platformei
-- **[libs/clipboard](https://github.com/rustdesk/rustdesk/tree/master/libs/clipboard)**: implementare copy/paste pentru fișiere pentru Windows, Linux, macOS.
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: interfață Sciter învechită (depreciată)
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: servicii audio/clipboard/input/video și conexiuni de rețea
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: inițiază o conexiune peer
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: comunică cu [rustdesk-server](https://github.com/rustdesk/rustdesk-server), așteaptă conexiune directă remote (TCP hole punching) sau prin relay
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: cod specific platformei
-- **[flutter](https://github.com/rustdesk/rustdesk/tree/master/flutter)**: cod Flutter pentru desktop și mobil
+- **[libs/hbb_common](https://github.com/TensorDesk/TensorDesk/tree/master/libs/hbb_common)**: codec video, config, wrapper tcp/udp, protobuf, funcții fs pentru transfer de fișiere și alte funcții utilitare
+- **[libs/scrap](https://github.com/TensorDesk/TensorDesk/tree/master/libs/scrap)**: capturare ecran
+- **[libs/enigo](https://github.com/TensorDesk/TensorDesk/tree/master/libs/enigo)**: control tastatură/mouse specific platformei
+- **[libs/clipboard](https://github.com/TensorDesk/TensorDesk/tree/master/libs/clipboard)**: implementare copy/paste pentru fișiere pentru Windows, Linux, macOS.
+- **[src/ui](https://github.com/TensorDesk/TensorDesk/tree/master/src/ui)**: interfață Sciter învechită (depreciată)
+- **[src/server](https://github.com/TensorDesk/TensorDesk/tree/master/src/server)**: servicii audio/clipboard/input/video și conexiuni de rețea
+- **[src/client.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/client.rs)**: inițiază o conexiune peer
+- **[src/rendezvous_mediator.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/rendezvous_mediator.rs)**: comunică cu [rustdesk-server](https://github.com/rustdesk/rustdesk-server), așteaptă conexiune directă remote (TCP hole punching) sau prin relay
+- **[src/platform](https://github.com/TensorDesk/TensorDesk/tree/master/src/platform)**: cod specific platformei
+- **[flutter](https://github.com/TensorDesk/TensorDesk/tree/master/flutter)**: cod Flutter pentru desktop și mobil
 
 ## Capturi de ecran
 
-![Connection Manager](https://github.com/rustdesk/rustdesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
+![Connection Manager](https://github.com/TensorDesk/TensorDesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
 
-![Connected to a Windows PC](https://github.com/rustdesk/rustdesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
+![Connected to a Windows PC](https://github.com/TensorDesk/TensorDesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
 
-![File Transfer](https://github.com/rustdesk/rustdesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
+![File Transfer](https://github.com/TensorDesk/TensorDesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
 
-![TCP Tunneling](https://github.com/rustdesk/rustdesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
+![TCP Tunneling](https://github.com/TensorDesk/TensorDesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)

@@ -1,31 +1,29 @@
+> [!NOTE]
+> This translation is based on an older upstream version and may be outdated. Branding and links now point to **TensorDesk**; for the latest features (ultra-low bandwidth transport), see the [English README](../README.md).
+
 <p align="center">
-  <img src="../res/logo-header.svg" alt="RustDesk - Uw bureaublad op afstand"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - Uw bureaublad op afstand"><br>
   <a href="#free-public-servers">Servers</a> •
   <a href="#raw-steps-to-build">Bouwen</a> •
   <a href="#how-to-build-with-docker">Docker</a> •
   <a href="#file-structure">Structuur</a> •
   <a href="#snapshot">Snapshot</a><br>
   [<a href="../README.md">English</a>] | [<a href="README-UA.md">Українська</a>] | [<a href="README-CS.md">česky</a>] | [<a href="README-ZH.md">中文</a>] | [<a href="README-HU.md">Magyar</a>] | [<a href="README-ES.md">Español</a>] | [<a href="README-FA.md">فارسی</a>] | [<a href="README-FR.md">Français</a>] | [<a href="README-DE.md">Deutsch</a>] | [<a href="README-PL.md">Polski</a>] | [<a href="README-ID.md">Indonesian</a>] | [<a href="README-FI.md">Suomi</a>] | [<a href="README-ML.md">മലയാളം</a>] | [<a href="README-JP.md">日本語</a>] | [<a href="README-IT.md">Italiano</a>] | [<a href="README-RU.md">Русский</a>] | [<a href="README-PTBR.md">Português (Brasil)</a>] | [<a href="README-EO.md">Esperanto</a>] | [<a href="README-KR.md">한국어</a>] | [<a href="README-AR.md">العربي</a>] | [<a href="README-VN.md">Tiếng Việt</a>] | [<a href="README-GR.md">Ελληνικά</a>]<br>
-  <b>Wij hebben uw hulp nodig om dit README bestand te vertalen, <a href="https://github.com/rustdesk/rustdesk/tree/master/src/lang">RustDesk UI</a> en <a href="https://github.com/rustdesk/doc.rustdesk.com">Doc</a> naar uw moedertaal</b>
+  <b>Wij hebben uw hulp nodig om dit README bestand te vertalen, <a href="https://github.com/TensorDesk/TensorDesk/tree/master/src/lang">TensorDesk UI</a> en <a href="https://github.com/rustdesk/doc.rustdesk.com">Doc</a> naar uw moedertaal</b>
 </p>
 
-Chat met ons: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-Geavanceerde%20Functies-blue)](https://rustdesk.com/pricing.html)
 
 Alweer een andere programma voor -bureaublad op afstand-, geschreven in Rust. Werkt -out of the box-, geen configuratie nodig. U heeft volledige controle over uw gegevens, en hoeft zich geen zorgen te maken over de beveiliging. U kunt onze rendez-vous/relay server gebruiken, [je eigen server opzetten](https://rustdesk.com/blog/id-relay-set), of [je eigen rendez-vous/relay-server schrijven](https://github.com/rustdesk/rustdesk-server-demo).
 
-RustDesk verwelkomt bijdragen van iedereen. Zie [`docs/CONTRIBUTING.md`](CONTRIBUTING.md) voor hulp om aan de slag te gaan.
+TensorDesk verwelkomt bijdragen van iedereen. Zie [`docs/CONTRIBUTING.md`](CONTRIBUTING.md) voor hulp om aan de slag te gaan.
 
-[**FAQ**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
+[**FAQ**](https://github.com/TensorDesk/TensorDesk/wiki/FAQ)
 
-[**BINARY DOWNLOAD**](https://github.com/rustdesk/rustdesk/releases)
+[**BINARY DOWNLOAD**](https://github.com/TensorDesk/TensorDesk/releases)
 
-[**NIGHTLY BUILD**](https://github.com/rustdesk/rustdesk/releases/tag/nightly) (meest recente build)
+[**NIGHTLY BUILD**](https://github.com/TensorDesk/TensorDesk/releases/tag/nightly) (meest recente build)
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="Download het op F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
 
 ## Afhankelijkheden
 
@@ -106,7 +104,7 @@ cd
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 mkdir -p target/debug
 wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
@@ -119,7 +117,7 @@ VCPKG_ROOT=$HOME/vcpkg cargo run
 Begin met het klonen van de repository en het bouwen van de docker container:
 
 ```sh
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 docker build -t "rustdesk-builder" .
 ```
@@ -144,18 +142,18 @@ Als je een release-versie hebt gebouwd, is het commando als volgt:
 target/release/rustdesk
 ```
 
-Zorg ervoor dat je deze commando's van de root van de RustDesk-repository uitvoert, anders kan het programma de nodige afhankelijkheden mogelijk niet vinden. Let ook op dat andere cargo-subcommando's zoals `install` en `run` zijn momenteel niet ondersteund, aangezien deze zouden worden uitgevoerd in een container in plaats van op de host.
+Zorg ervoor dat je deze commando's van de root van de TensorDesk-repository uitvoert, anders kan het programma de nodige afhankelijkheden mogelijk niet vinden. Let ook op dat andere cargo-subcommando's zoals `install` en `run` zijn momenteel niet ondersteund, aangezien deze zouden worden uitgevoerd in een container in plaats van op de host.
 
 ## Bestandsstructuur
 
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: videocodec, configuratie, TCP/UDP-wrapper, protobuf, bestandssysteemfuncties voor bestandsoverdracht en nog wat andere nuttige functies
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: schermopname
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: platformspecifieke muis- en toetsenbordbeheer
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: GUI
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: geluids-, klembord-, invoer- en video-services, netwerkverbindingen
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: voor het opzetten van peer-verbindingen
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: Communicatie met [rustdesk-server](https://github.com/rustdesk/rustdesk-server), afwachten van redirect op afstand (TCP hole punching) of een relayed verbinding
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: platformspecifieke code
+- **[libs/hbb_common](https://github.com/TensorDesk/TensorDesk/tree/master/libs/hbb_common)**: videocodec, configuratie, TCP/UDP-wrapper, protobuf, bestandssysteemfuncties voor bestandsoverdracht en nog wat andere nuttige functies
+- **[libs/scrap](https://github.com/TensorDesk/TensorDesk/tree/master/libs/scrap)**: schermopname
+- **[libs/enigo](https://github.com/TensorDesk/TensorDesk/tree/master/libs/enigo)**: platformspecifieke muis- en toetsenbordbeheer
+- **[src/ui](https://github.com/TensorDesk/TensorDesk/tree/master/src/ui)**: GUI
+- **[src/server](https://github.com/TensorDesk/TensorDesk/tree/master/src/server)**: geluids-, klembord-, invoer- en video-services, netwerkverbindingen
+- **[src/client.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/client.rs)**: voor het opzetten van peer-verbindingen
+- **[src/rendezvous_mediator.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/rendezvous_mediator.rs)**: Communicatie met [rustdesk-server](https://github.com/rustdesk/rustdesk-server), afwachten van redirect op afstand (TCP hole punching) of een relayed verbinding
+- **[src/platform](https://github.com/TensorDesk/TensorDesk/tree/master/src/platform)**: platformspecifieke code
 
 ## Snapshot
 

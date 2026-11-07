@@ -1,38 +1,36 @@
+> [!NOTE]
+> This translation is based on an older upstream version and may be outdated. Branding and links now point to **TensorDesk**; for the latest features (ultra-low bandwidth transport), see the [English README](../README.md).
+
 <p align="center">
-  <img src="../res/logo-header.svg" alt="RustDesk - あなたのためのリモートデスクトップ"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - あなたのためのリモートデスクトップ"><br>
   <a href="#free-public-servers">Servers</a> •
   <a href="#raw-steps-to-build">Build</a> •
   <a href="#how-to-build-with-docker">Docker</a> •
   <a href="#file-structure">Structure</a> •
   <a href="#snapshot">Snapshot</a><br>
   [<a href="README-UA.md">Українська</a>] | [<a href="README-CS.md">česky</a>] | [<a href="README-ZH.md">中文</a>] | [<a href="README-HU.md">Magyar</a>] | [<a href="README-ES.md">Español</a>] | [<a href="README-FA.md">فارسی</a>] | [<a href="README-FR.md">Français</a>] | [<a href="README-DE.md">Deutsch</a>] | [<a href="README-PL.md">Polski</a>] | [<a href="README-ID.md">Indonesian</a>] | [<a href="README-FI.md">Suomi</a>] | [<a href="README-ML.md">മലയാളം</a>] | [<a href="README-JP.md">日本語</a>] | [<a href="README-NL.md">Nederlands</a>] | [<a href="README-IT.md">Italiano</a>] | [<a href="README-RU.md">Русский</a>] | [<a href="README-PTBR.md">Português (Brasil)</a>] | [<a href="README-EO.md">Esperanto</a>] | [<a href="README-KR.md">한국어</a>] | [<a href="README-AR.md">العربي</a>] | [<a href="README-VN.md">Tiếng Việt</a>] | [<a href="README-DA.md">Dansk</a>] | [<a href="README-GR.md">Ελληνικά</a>] | [<a href="README-TR.md">Türkçe</a>]<br>
-  <b>READMEや<a href="https://github.com/rustdesk/rustdesk/tree/master/src/lang">RustDesk UI</a>、 <a href="https://github.com/rustdesk/doc.rustdesk.com">RustDesk Doc</a>の翻訳者を歓迎します！</b>
+  <b>READMEや<a href="https://github.com/TensorDesk/TensorDesk/tree/master/src/lang">TensorDesk UI</a>、 <a href="https://github.com/rustdesk/doc.rustdesk.com">TensorDesk Doc</a>の翻訳者を歓迎します！</b>
 </p>
 
-私たちと話す: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-%E9%AB%98%E5%BA%A6%E3%81%AA%E6%A9%9F%E8%83%BD-blue)](https://rustdesk.com/pricing.html)
 
 Rustで書かれた、設定不要ですぐに使えるリモートデスクトップソフトウェアです。自分のデータを完全にコントロールでき、セキュリティの心配もありません。私たちのランデブー/リレーサーバを使うことも、[自分でサーバーをセットアップする](https://rustdesk.com/server) ことも、 [自分でランデブー/リレーサーバを作成する](https://github.com/rustdesk/rustdesk-server-demo)こともできます。
 
 ![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
 
-RustDeskは皆さんの貢献を歓迎します。  
+TensorDeskは皆さんの貢献を歓迎します。  
 貢献の方法については[CONTRIBUTING.md](CONTRIBUTING.md)をご確認ください。
 
-[**よくある質問**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
+[**よくある質問**](https://github.com/TensorDesk/TensorDesk/wiki/FAQ)
 
-[**パッケージのダウンロード**](https://github.com/rustdesk/rustdesk/releases)
+[**パッケージのダウンロード**](https://github.com/TensorDesk/TensorDesk/releases)
 
-[**ナイトリービルド**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
+[**ナイトリービルド**](https://github.com/TensorDesk/TensorDesk/releases/tag/nightly)
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="F-Droidで入手する"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
 
 ## 依存関係
 
-デスクトップ版ではGUIにFlutterまたはSciter(非推奨)を使用しますが、チュートリアルでは分かりやすく、簡単なSciterのみを対象に解説しています。Flutterでのビルド方法については[CI](https://github.com/rustdesk/rustdesk/blob/master/.github/workflows/flutter-build.yml)をご覧ください。
+デスクトップ版ではGUIにFlutterまたはSciter(非推奨)を使用しますが、チュートリアルでは分かりやすく、簡単なSciterのみを対象に解説しています。Flutterでのビルド方法については[CI](https://github.com/TensorDesk/TensorDesk/blob/master/.github/workflows/flutter-build.yml)をご覧ください。
 
 Sciter dynamic libraryを事前にダウンロードしてください。
 
@@ -112,7 +110,7 @@ cd
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 mkdir -p target/debug
 wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
@@ -125,7 +123,7 @@ VCPKG_ROOT=$HOME/vcpkg cargo run
 リポジトリをクローンし、Dockerコンテナを構築します:
 
 ```sh
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/TensorDesk/TensorDesk
 cd rustdesk
 docker build -t "rustdesk-builder" .
 ```
@@ -135,7 +133,7 @@ docker build -t "rustdesk-builder" .
 ```sh
 docker run --rm -it -v $PWD:/home/user/rustdesk -v rustdesk-git-cache:/home/user/.cargo/git -v rustdesk-registry-cache:/home/user/.cargo/registry -e PUID="$(id -u)" -e PGID="$(id -g)" rustdesk-builder
 ```
-このコマンドはRustDeskをビルドする度に実行する必要があります。  
+このコマンドはTensorDeskをビルドする度に実行する必要があります。  
 
 初回ビルドは時間がかかるかもしれませんが、2回目以降は依存関係がキャッシュされるため、ビルドにかかる時間が短くなります。  
 ビルドコマンドに追加の引数を指定する必要がある場合は、コマンドの最後(`<OPTIONAL-ARGS>`の位置)で指定することができます。例えば、最適化されたリリースバージョンをビルドしたい場合は、上記のコマンドの後に `--release` を追記し実行します。ビルドされた実行ファイルはあなたのシステムのターゲットフォルダに保存され、下記のコマンドで実行することができます。  
@@ -151,32 +149,32 @@ target/debug/rustdesk
 target/release/rustdesk
 ```
 
-コマンドをRustDeskリポジトリのルートから実行していることを確認してください。また、`install` や `run` などの他のcargoサブコマンドは、ホストではなくコンテナ内でプログラムをインストール、実行するため、現在の方法ではサポートされていません。
+コマンドをTensorDeskリポジトリのルートから実行していることを確認してください。また、`install` や `run` などの他のcargoサブコマンドは、ホストではなくコンテナ内でプログラムをインストール、実行するため、現在の方法ではサポートされていません。
 
 ## ファイル構造
 
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: ビデオコーデック、設定、tcp/udpラッパー、protobuf、ファイル転送に利用されるfs関数やその他のユーティリティ関数
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: スクリーンキャプチャ
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: プラットフォーム固有のキーボード/マウス操作
-- **[libs/clipboard](https://github.com/rustdesk/rustdesk/tree/master/libs/clipboard)**: Windows、Linux、macOS向けのファイルのコピーと貼り付けの実装
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: 廃止された Sciter UI (非推奨)
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: 
+- **[libs/hbb_common](https://github.com/TensorDesk/TensorDesk/tree/master/libs/hbb_common)**: ビデオコーデック、設定、tcp/udpラッパー、protobuf、ファイル転送に利用されるfs関数やその他のユーティリティ関数
+- **[libs/scrap](https://github.com/TensorDesk/TensorDesk/tree/master/libs/scrap)**: スクリーンキャプチャ
+- **[libs/enigo](https://github.com/TensorDesk/TensorDesk/tree/master/libs/enigo)**: プラットフォーム固有のキーボード/マウス操作
+- **[libs/clipboard](https://github.com/TensorDesk/TensorDesk/tree/master/libs/clipboard)**: Windows、Linux、macOS向けのファイルのコピーと貼り付けの実装
+- **[src/ui](https://github.com/TensorDesk/TensorDesk/tree/master/src/ui)**: 廃止された Sciter UI (非推奨)
+- **[src/server](https://github.com/TensorDesk/TensorDesk/tree/master/src/server)**: 
 オーディオ/クリップボード/入力/ビデオ サービスとネットワーク接続
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: ピア接続の開始
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: [rustdesk-server](https://github.com/rustdesk/rustdesk-server)と通信し、リモートの直接接続(TCPホールパンチング)や中継接続を担う。
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: プラットフォーム固有のコード
-- **[flutter](https://github.com/rustdesk/rustdesk/tree/master/flutter)**: デスクトップとモバイル向けのFlutterコード
+- **[src/client.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/client.rs)**: ピア接続の開始
+- **[src/rendezvous_mediator.rs](https://github.com/TensorDesk/TensorDesk/tree/master/src/rendezvous_mediator.rs)**: [rustdesk-server](https://github.com/rustdesk/rustdesk-server)と通信し、リモートの直接接続(TCPホールパンチング)や中継接続を担う。
+- **[src/platform](https://github.com/TensorDesk/TensorDesk/tree/master/src/platform)**: プラットフォーム固有のコード
+- **[flutter](https://github.com/TensorDesk/TensorDesk/tree/master/flutter)**: デスクトップとモバイル向けのFlutterコード
 
 > [!注意]
 > **:不正使用に関する免責事項** <br>
-> RustDeskの開発者は、このソフトウェアの非倫理的または違法な使用を容認または支持しません。不正アクセス、不正な制御、またはプライバシーの侵害などの不正使用は、当社のガイドラインに厳密に違反します。開発者は、アプリケーションの不正使用に対して一切の責任を負いません。
+> TensorDeskの開発者は、このソフトウェアの非倫理的または違法な使用を容認または支持しません。不正アクセス、不正な制御、またはプライバシーの侵害などの不正使用は、当社のガイドラインに厳密に違反します。開発者は、アプリケーションの不正使用に対して一切の責任を負いません。
 
 ## スクリーンショット
 
-![Connection Manager](https://github.com/rustdesk/rustdesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
+![Connection Manager](https://github.com/TensorDesk/TensorDesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
 
-![Connected to a Windows PC](https://github.com/rustdesk/rustdesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
+![Connected to a Windows PC](https://github.com/TensorDesk/TensorDesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
 
-![File Transfer](https://github.com/rustdesk/rustdesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
+![File Transfer](https://github.com/TensorDesk/TensorDesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
 
-![TCP Tunneling](https://github.com/rustdesk/rustdesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
+![TCP Tunneling](https://github.com/TensorDesk/TensorDesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
