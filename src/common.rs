@@ -1083,10 +1083,10 @@ pub(crate) fn release_id_from_update_url(update_url: &str) -> ResultType<String>
     };
     let segments = segments.collect::<Vec<_>>();
     let release_id = match segments.as_slice() {
-        ["rustdesk", "rustdesk", "releases", "tag", release_id] => *release_id,
-        ["rustdesk", "rustdesk", "releases", "tag", release_id, ""] => *release_id,
+        ["TensorDesk", "TensorDesk", "releases", "tag", release_id] => *release_id,
+        ["TensorDesk", "TensorDesk", "releases", "tag", release_id, ""] => *release_id,
         _ => bail!(
-            "Update URL is not a RustDesk release tag URL: {}",
+            "Update URL is not a TensorDesk release tag URL: {}",
             update_url
         ),
     };
@@ -3107,8 +3107,8 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn parses_stable_rustdesk_release_url() {
-        let update_url = "https://github.com/rustdesk/rustdesk/releases/tag/v1.4.6";
+    fn parses_stable_tensordesk_release_url() {
+        let update_url = "https://github.com/TensorDesk/TensorDesk/releases/tag/v1.4.6";
 
         assert_eq!(release_id_from_update_url(update_url).unwrap(), "v1.4.6");
         assert_eq!(display_version_from_release_id("v1.4.6").unwrap(), "1.4.6");
@@ -3121,19 +3121,20 @@ mod tests {
     #[test]
     fn rejects_untrusted_release_urls_and_unstable_versions() {
         for update_url in [
-            "http://github.com/rustdesk/rustdesk/releases/tag/v1.4.6",
-            "https://github.com:8443/rustdesk/rustdesk/releases/tag/v1.4.6",
-            "https://github.com:443/rustdesk/rustdesk/releases/tag/v1.4.6",
-            "https://user@github.com/rustdesk/rustdesk/releases/tag/v1.4.6",
-            "https://example.com/rustdesk/rustdesk/releases/tag/v1.4.6",
-            "https://github.com/other/rustdesk/releases/tag/v1.4.6",
-            "https://github.com/rustdesk/other/releases/tag/v1.4.6",
-            "https://github.com/rustdesk/rustdesk/releases/download/v1.4.6/rustdesk.exe",
-            "https://github.com/rustdesk/rustdesk/releases/tag/v1.4.6?x=1",
-            "https://github.com/rustdesk/rustdesk/releases/tag/v1.4.6#asset",
-            "https://github.com/rustdesk/rustdesk/releases/tag/v1.4.6/extra",
-            "https://github.com/rustdesk/rustdesk/releases/tag/v1%2F4%2F6",
-            "https://github.com/rustdesk/rustdesk/releases/tag/%2e%2e",
+            "http://github.com/TensorDesk/TensorDesk/releases/tag/v1.4.6",
+            "https://github.com:8443/TensorDesk/TensorDesk/releases/tag/v1.4.6",
+            "https://github.com:443/TensorDesk/TensorDesk/releases/tag/v1.4.6",
+            "https://user@github.com/TensorDesk/TensorDesk/releases/tag/v1.4.6",
+            "https://example.com/TensorDesk/TensorDesk/releases/tag/v1.4.6",
+            "https://github.com/other/TensorDesk/releases/tag/v1.4.6",
+            "https://github.com/TensorDesk/other/releases/tag/v1.4.6",
+            "https://github.com/rustdesk/rustdesk/releases/tag/v1.4.6",
+            "https://github.com/TensorDesk/TensorDesk/releases/download/v1.4.6/tensordesk.exe",
+            "https://github.com/TensorDesk/TensorDesk/releases/tag/v1.4.6?x=1",
+            "https://github.com/TensorDesk/TensorDesk/releases/tag/v1.4.6#asset",
+            "https://github.com/TensorDesk/TensorDesk/releases/tag/v1.4.6/extra",
+            "https://github.com/TensorDesk/TensorDesk/releases/tag/v1%2F4%2F6",
+            "https://github.com/TensorDesk/TensorDesk/releases/tag/%2e%2e",
         ] {
             assert!(release_id_from_update_url(update_url).is_err());
         }
