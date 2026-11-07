@@ -346,7 +346,7 @@ impl AomEncoder {
             &image,
             pts as _,
             duration as _, // Duration
-            flags,
+            flags as _,
         ));
 
         Ok(EncodeFrames {

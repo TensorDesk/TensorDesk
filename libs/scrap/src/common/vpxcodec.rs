@@ -300,7 +300,7 @@ impl VpxEncoder {
             &image,
             pts as _,
             1, // Duration
-            flags,
+            flags as _,
             VPX_DL_REALTIME as _,
         ));
 
