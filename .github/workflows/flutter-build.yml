@@ -56,6 +56,9 @@ env:
   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
   PUBLISH_UPDATE_METADATA: "${{ inputs.publish-update-metadata }}"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}-2"
+  # Managed TensorDesk client: hide the raw ID/relay/API server fields; server
+  # settings are pulled from the control plane via the activation code.
+  TENSORDESK_HIDE_SERVER_SETTINGS: "1"
 
 jobs:
   validate-update-metadata-keys:

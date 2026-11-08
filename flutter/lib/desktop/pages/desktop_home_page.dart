@@ -702,7 +702,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!isWeb && await bind.mainIsUsingPublicServer()) {
-        showServerSettings(gFFI.dialogManager, setState);
+        if (bind.mainGetBuildinOption(key: kOptionHideServerSetting) == 'Y') {
+          showActivationDialog(gFFI.dialogManager, setState);
+        } else {
+          showServerSettings(gFFI.dialogManager, setState);
+        }
       }
     });
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {

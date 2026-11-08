@@ -2691,6 +2691,17 @@ pub fn get_builtin_option(key: &str) -> String {
         .unwrap_or_default()
 }
 
+pub fn apply_managed_defaults() {
+    if option_env!("TENSORDESK_HIDE_SERVER_SETTINGS").is_none() {
+        return;
+    }
+    config::BUILTIN_SETTINGS
+        .write()
+        .unwrap()
+        .entry(keys::OPTION_HIDE_SERVER_SETTINGS.to_owned())
+        .or_insert_with(|| "Y".to_owned());
+}
+
 #[inline]
 pub fn is_custom_client() -> bool {
     if option_env!("TENSORDESK_MANAGED_CLIENT").is_some() {

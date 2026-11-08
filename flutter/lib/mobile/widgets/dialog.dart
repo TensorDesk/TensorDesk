@@ -221,6 +221,64 @@ void showServerSettingsWithValue(
   });
 }
 
+void showActivationDialog(OverlayDialogManager dialogManager,
+    VoidCallback onActivated) {
+  var isInProgress = false;
+  var code = '';
+  dialogManager.show((setState, close, context) {
+    Future<void> submit() async {
+      if (code.trim().isEmpty) return;
+      setState(() {
+        isInProgress = true;
+      });
+      final result = await activateTenant(code);
+      setState(() {
+        isInProgress = false;
+      });
+      if (result.ok) {
+        close();
+        onActivated.call();
+        showToast(translate('Successful'));
+      } else {
+        showToast('${translate('Failed')}: ${result.message}');
+      }
+    }
+
+    return CustomAlertDialog(
+      title: Text(translate('Activate TensorDesk')),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 500),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(translate('Enter the activation code from the console')),
+            const SizedBox(height: 12),
+            TextField(
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: translate('Activation code'),
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (value) => code = value,
+              onSubmitted: (_) => submit(),
+            ),
+            if (isInProgress)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        dialogButton('Cancel', onPressed: close, isOutline: true),
+        dialogButton('Activate TensorDesk', onPressed: submit),
+      ],
+    );
+  });
+}
+
 TextFormField serverSettingsTextFormField({
   required String label,
   required TextEditingController controller,

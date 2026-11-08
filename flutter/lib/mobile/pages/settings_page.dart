@@ -776,6 +776,16 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                     setState(callback);
                   });
                 }),
+          if (!disabledSettings && !_hideNetwork && _hideServer)
+            SettingsTile(
+                title: Text(translate('Activate TensorDesk')),
+                leading: Icon(Icons.vpn_key_outlined),
+                onPressed: (context) {
+                  showActivationDialog(gFFI.dialogManager, () async {
+                    _isUsingPublicServer = await bind.mainIsUsingPublicServer();
+                    setState(() {});
+                  });
+                }),
           if (!_hideNetwork && !_hideProxy)
             SettingsTile(
                 title: Text(translate('Socks5/Http(s) Proxy')),

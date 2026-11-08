@@ -2453,6 +2453,16 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
         });
       }
     }
+  } else if (uri.authority == "activate") {
+    final code = uri.queryParameters['code'] ??
+        (uri.path.length > 1 ? uri.path.substring(1) : '');
+    if (code.isNotEmpty) {
+      Timer(Duration(seconds: 1), () async {
+        final result = await activateTenant(code);
+        showToast(translate(result.ok ? 'Successful' : 'Failed'));
+      });
+    }
+    return null;
   } else if (options.contains(uri.authority)) {
     command = '--${uri.authority}';
     if (uri.path.length > 1) {
@@ -3640,6 +3650,71 @@ Future<bool> setServerConfig(
     gFFI.userModel.logOut(apiServer: oldApiServer);
   }
   return true;
+}
+
+const kTenantApiBase = String.fromEnvironment(
+    'TENSORDESK_API_BASE', defaultValue: 'https://api.tensordesk.org');
+
+class TenantActivationResult {
+  final bool ok;
+  final String message;
+
+  const TenantActivationResult(this.ok, this.message);
+}
+
+/// Pulls the server configuration for this tenant from the control plane and
+/// writes it into local options. The user only provides the activation code.
+Future<TenantActivationResult> activateTenant(String token) async {
+  token = token.trim();
+  if (token.isEmpty) {
+    return const TenantActivationResult(false, 'activation code is empty');
+  }
+  final base = kTenantApiBase.endsWith('/')
+      ? kTenantApiBase.substring(0, kTenantApiBase.length - 1)
+      : kTenantApiBase;
+  try {
+    final response = await http.get(
+      Uri.parse('$base/api/client/bootstrap'),
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    String message = response.body;
+    if (response.statusCode != 200) {
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        }
+      } catch (_) {}
+      return TenantActivationResult(false, message);
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final host = (data['host'] ?? '').toString().trim();
+    final key = (data['key'] ?? '').toString().trim();
+    final api = (data['api'] ?? '').toString().trim();
+    final relay = (data['relay'] ?? '').toString().trim();
+    final tenantId = (data['tenant_id'] ?? '').toString().trim();
+    if (host.isEmpty || key.isEmpty) {
+      return const TenantActivationResult(false, 'invalid bootstrap response');
+    }
+    // Set the tenant credentials first: changing custom-rendezvous-server makes
+    // the service restart the rendezvous mediator immediately.
+    await bind.mainSetOption(key: 'tenant-id', value: tenantId);
+    await bind.mainSetOption(key: 'tenant-proof', value: token);
+    final ok = await setServerConfig(
+        null,
+        null,
+        ServerConfig(
+            idServer: host, relayServer: relay, apiServer: api, key: key));
+    if (!ok) {
+      return const TenantActivationResult(false, 'failed to save server config');
+    }
+    return const TenantActivationResult(true, '');
+  } catch (e) {
+    return TenantActivationResult(false, e.toString());
+  }
 }
 
 ColorFilter? svgColor(Color? color) {

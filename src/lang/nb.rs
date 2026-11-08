@@ -823,5 +823,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Please select Android → media.", "Velg Android → media."),
         ("Trust duration (days)", "Klareringsperiode (dager)"),
         ("Renew trust", "Forny klarering"),
+        ("Activate TensorDesk", "Aktiver TensorDesk"),
+        ("Enter the activation code from the console", "Skriv inn aktiveringskoden fra konsollen"),
+        ("Activation code", "Aktiveringskode"),
     ].iter().cloned().collect();
 }

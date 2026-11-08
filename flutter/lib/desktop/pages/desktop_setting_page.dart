@@ -1837,7 +1837,7 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
     final hideWebSocket = isWeb ||
         bind.mainGetBuildinOption(key: kOptionHideWebSocketSetting) == 'Y';
 
-    if (hideServer && hideProxy && hideWebSocket) {
+    if (isWeb && hideServer && hideProxy && hideWebSocket) {
       return Offstage();
     }
 
@@ -1925,6 +1925,14 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!isWeb)
+                listTile(
+                  icon: Icons.vpn_key_outlined,
+                  title: 'Activate TensorDesk',
+                  onTap: () => showActivationDialog(
+                      gFFI.dialogManager, () => setState(() {})),
+                ),
+              if (!isWeb) divider,
               if (!hideServer)
                 listTile(
                   icon: Icons.dns_outlined,
