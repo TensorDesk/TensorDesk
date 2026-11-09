@@ -1,6 +1,6 @@
 pub mod keys;
 
-use hbb_common::config::{Config, HARD_SETTINGS};
+use hbb_common::config::{Config, BUILTIN_SETTINGS, HARD_SETTINGS};
 
 /// The installer default lives in `HARD_SETTINGS` (top-level `conn-type` in
 /// `custom.txt`); a non-empty user option overrides it so the role can be
@@ -37,7 +37,12 @@ pub fn is_outgoing_only() -> bool {
 /// Managed builds hide raw server settings; activation is the only supported
 /// way for a device to learn its servers.
 pub fn is_managed_build() -> bool {
-    Config::get_builtin_option("hide-server-settings") == "Y"
+    BUILTIN_SETTINGS
+        .read()
+        .unwrap()
+        .get(keys::OPTION_HIDE_SERVER_SETTINGS)
+        .map(|value| value == "Y")
+        .unwrap_or(false)
 }
 
 /// A device counts as activated once it carries a tenant credential or any
