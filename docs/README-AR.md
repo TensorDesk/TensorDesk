@@ -2,7 +2,7 @@
 > This translation is based on an older upstream version and may be outdated. Branding and links now point to **TensorDesk**; for the latest features (ultra-low bandwidth transport), see the [English README](../README.md).
 
 <p align="center">
-  <img src="../res/logo-header.svg" alt="TensorDesk - Your remote desktop"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - سطح مكتب ذكي بمساعدة AI"><br>
   <a href="#free-public-servers">Servers</a> •
   <a href="#raw-steps-to-build">Build</a> •
   <a href="#how-to-build-with-docker">Docker</a> •

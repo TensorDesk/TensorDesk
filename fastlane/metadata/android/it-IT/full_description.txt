@@ -1,4 +1,4 @@
-Applicazione open source per desktop remoto, l'alternativa open source a TeamViewer.
+App per desktop assistita da IA, open source. Trasforma il controllo remoto in collaborazione intelligente — rilevazione problemi con agenti, telemetria comportamentale 24 ore e larghezza di banda ultra bassa per connessioni sempre attive.
 Codice sorgente: https://github.com/rustdesk/rustdesk
 Documentazione: https://rustdesk.com/docs/it/client/android/
 

@@ -2,7 +2,7 @@
 > This translation is based on an older upstream version and may be outdated. Branding and links now point to **TensorDesk**; for the latest features (ultra-low bandwidth transport), see the [English README](../README.md).
 
 <p align="center">
-  <img src="../res/logo-header.svg" alt="TensorDesk - Seu desktop remoto"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - Desktop assistido por IA"><br>
   <a href="#compilar">Compilar</a> •
   <a href="#como-compilar-com-o-docker">Docker</a> •
   <a href="#estrutura-de-arquivos">Estrutura</a> •

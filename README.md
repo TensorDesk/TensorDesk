@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="res/logo-header.svg" alt="TensorDesk - Smart remote desktop, ultra-low bandwidth streaming"><br>
+  <img src="res/logo-header.svg" alt="TensorDesk - AI-assisted desktop, ultra-low bandwidth streaming"><br>
   <a href="#raw-steps-to-build">Build</a> •
   <a href="#how-to-build-with-docker">Docker</a> •
   <a href="#file-structure">Structure</a> •
@@ -12,7 +12,9 @@
 > **Misuse Disclaimer:** <br>
 > The developers of TensorDesk do not condone or support any unethical or illegal use of this software. Misuse, such as unauthorized access, control or invasion of privacy, is strictly against our guidelines. The authors are not responsible for any misuse of the application.
 
-**TensorDesk** is an open-source remote desktop solution, written in Rust and built on [RustDesk](https://github.com/rustdesk/rustdesk). It keeps everything you like about RustDesk and adds a deeply optimized transport layer focused on one goal: **minimum bandwidth for always-on connections**. Sessions are managed through the TensorDesk SaaS console — devices, members, sessions and billing in one place.
+**TensorDesk** is an open-source AI-assisted desktop, written in Rust and built on [RustDesk](https://github.com/rustdesk/rustdesk). It turns remote control into smart collaboration — AI-assisted interaction, agent-driven issue detection, 24-hours behavior telemetry that feeds product improvements — while keeping everything you like about RustDesk and adding a deeply optimized transport layer focused on one goal: **minimum bandwidth for always-on connections**. Sessions are managed through the TensorDesk SaaS console — devices, members, sessions and billing in one place.
+
+> *Smart Desktop: break free from the keyboard. Free your mind.*
 
 ## Why TensorDesk: ultra-low bandwidth
 

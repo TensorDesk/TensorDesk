@@ -1,4 +1,4 @@
-开源远程桌面应用，开源 TeamViewer 替代方案。
+智能辅助桌面应用，开源。把远程控制升级为智能协作——Agent 自动发现问题、24 小时行为轨迹汇聚产品改进、常驻连接极致低流量。
 源代码：https://github.com/rustdesk/rustdesk
 文档：https://rustdesk.com/docs/en/manual/mobile/
 

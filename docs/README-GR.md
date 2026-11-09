@@ -2,7 +2,7 @@
 > This translation is based on an older upstream version and may be outdated. Branding and links now point to **TensorDesk**; for the latest features (ultra-low bandwidth transport), see the [English README](../README.md).
 
 <p align="center">
-  <img src="../res/logo-header.svg" alt="TensorDesk - Your remote desktop"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - Έξυπνος βοηθός επιφάνειας"><br>
   <a href="#Δωρεάν-δημόσιοι-διακομιστές">Διακομιστές</a> •
   <a href="#Γενικά-βήματα-ώστε-να-κάνετε-build">Build</a> •
   <a href="#Πως-να-κάνετε-build-στο-Docker">Docker</a> •

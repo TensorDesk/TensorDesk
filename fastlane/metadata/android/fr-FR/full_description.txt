@@ -1,4 +1,4 @@
-Une application de bureau à distance open source, l'alternative open source à TeamViewer.
+Application de bureau assistée par IA, open source. Faites du contrôle à distance une collaboration intelligente — détection d'incidents par agent, télémétrie de comportement sur 24 h et bande passante ultra faible pour les connexions permanentes.
 Code source : https://github.com/rustdesk/rustdesk
 Doc : https://rustdesk.com/docs/en/manual/mobile/
 

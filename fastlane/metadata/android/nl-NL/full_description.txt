@@ -1,4 +1,4 @@
-Een open-source toepassing voor bureaublad op afstand, het open-source alternatief voor TeamViewer.
+AI-ondersteunde desktoptoepassing, open source. Verander externe toegang in slimme samenwerking — agent-gedreven probleemdetectie, 24-uurs gedragstelemetrie en ultra-low bandwidth voor altijd-aan verbindingen.
 Bron code: https://github.com/rustdesk/rustdesk
 Doc: https://rustdesk.com/docs/en/manual/mobile/
 

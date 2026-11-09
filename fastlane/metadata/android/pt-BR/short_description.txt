@@ -1,1 +1,1 @@
-Aplicativo de acesso remoto open source, alternativa ao TeamViewer.
+Desktop assistido por IA. Código aberto.

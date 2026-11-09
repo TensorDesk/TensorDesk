@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../res/logo-header.svg" alt="TensorDesk - 智能远程桌面，极致低流量传输"><br>
+  <img src="../res/logo-header.svg" alt="TensorDesk - 智能辅助桌面：挣脱键盘桎梏，释放思考力量"><br>
   <a href="#基本构建步骤">编译</a> •
   <a href="#使用-Docker-编译">Docker</a> •
   <a href="#文件结构">结构</a> •
@@ -14,9 +14,11 @@
 > [!NOTE]
 > **合规提醒：** 中国大陆用户请遵守《中华人民共和国计算机信息网络国际联网管理暂行规定》等法律法规，合规使用本软件。
 
-**TensorDesk** 是一款开源远程桌面软件，基于 [RustDesk](https://github.com/rustdesk/rustdesk) 深度优化，使用 Rust 编写。它在保留 RustDesk 全部能力的基础上，围绕一个目标重构了传输层：**让常驻连接的流量降到最低**。所有会话由 TensorDesk SaaS 控制台统一管理——设备、成员、会话与计费一站搞定。
+**TensorDesk** 是一款开源智能辅助桌面，基于 [RustDesk](https://github.com/rustdesk/rustdesk) 深度优化，使用 Rust 编写。它把远程控制升级为智能协作——智能辅助交互、Agent 自动发现问题、24 小时行为轨迹汇聚产品改进——同时保留 RustDesk 全部能力，并围绕一个目标重构了传输层：**让常驻连接的流量降到最低**。所有会话由 TensorDesk SaaS 控制台统一管理——设备、成员、会话与计费一站搞定。
 
-## 为什么选择 TensorDesk：极致低流量
+> *智能桌面：挣脱键盘桎梏，释放思考力量*
+
+## 为什么选择 TensorDesk：智能辅助 + 极致低流量
 
 当远端画面几乎不变时，TensorDesk 会把流量压到接近心跳的水平：
 

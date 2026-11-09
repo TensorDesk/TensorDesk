@@ -1,4 +1,4 @@
-An open-source remote desktop application, the open source TeamViewer alternative.
+An AI-assisted desktop application, open-source. Turn remote control into smart collaboration — agent-driven issue detection, 24-hours behavior telemetry, ultra-low bandwidth for always-on connections.
 Source code: https://github.com/rustdesk/rustdesk
 Doc: https://rustdesk.com/docs/en/manual/mobile/
 

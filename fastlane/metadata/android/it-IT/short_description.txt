@@ -1,1 +1,1 @@
-App open source per desktop remoto, alternativa a TeamViewer.
+Desktop assistito da IA. Open source.
