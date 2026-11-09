@@ -494,7 +494,9 @@ pub fn core_main() -> Option<CoreMainAction> {
                     } else {
                         format!("{}.exe", args[1])
                     };
-                    if let Ok(lic) = crate::custom_server::get_custom_server_from_string(&name) {
+                    if base::config::is_managed_build() {
+                        println!("--config is disabled in this build; activate TensorDesk instead.");
+                    } else if let Ok(lic) = crate::custom_server::get_custom_server_from_string(&name) {
                         if !lic.host.is_empty() {
                             crate::ui_interface::set_option("key".into(), lic.key);
                             crate::ui_interface::set_option(
