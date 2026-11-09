@@ -278,6 +278,11 @@ impl RendezvousMediator {
                 sleep(1.).await;
             }
         }
+        // Wait for the activation flow to write the tenant config; the
+        // compiled-in fallback server is not a legitimate target here.
+        while base::config::activation_required() {
+            sleep(3.).await;
+        }
         crate::hbbs_http::sync::start();
         #[cfg(target_os = "windows")]
         if crate::platform::is_installed() && crate::is_server() {

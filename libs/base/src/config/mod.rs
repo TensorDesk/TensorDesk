@@ -34,6 +34,27 @@ pub fn is_outgoing_only() -> bool {
     conn_type() == "outgoing"
 }
 
+/// Managed builds hide raw server settings; activation is the only supported
+/// way for a device to learn its servers.
+pub fn is_managed_build() -> bool {
+    Config::get_builtin_option("hide-server-settings") == "Y"
+}
+
+/// A device counts as activated once it carries a tenant credential or any
+/// rendezvous server config (user option or `custom.txt` default).
+pub fn is_activated() -> bool {
+    !Config::get_option("tenant-id").is_empty()
+        || !Config::get_option("custom-rendezvous-server").is_empty()
+        || !Config::get_option("rendezvous-servers").is_empty()
+}
+
+/// A managed build without activation has no legitimate server to talk to and
+/// must not register against the compiled-in fallback.
+#[inline]
+pub fn activation_required() -> bool {
+    is_managed_build() && !is_activated()
+}
+
 #[cfg(test)]
 mod tests {
     use super::resolve_conn_type;
