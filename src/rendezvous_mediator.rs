@@ -284,6 +284,7 @@ impl RendezvousMediator {
             sleep(3.).await;
         }
         crate::hbbs_http::sync::start();
+        crate::tenant_bootstrap::start();
         #[cfg(target_os = "windows")]
         if crate::platform::is_installed() && crate::is_server() {
             crate::updater::start_auto_update();
@@ -309,6 +310,12 @@ impl RendezvousMediator {
         scrap::codec::test_av1();
         *LAST_NOT_DEPLOYED_REGISTER.lock().await = None;
         loop {
+            // Re-checked every cycle: a revoked credential clears the tenant
+            // config (see tenant_bootstrap) and must re-arm the gate instead
+            // of falling back to the compiled-in server.
+            while base::config::activation_required() {
+                sleep(3.).await;
+            }
             let timeout = Arc::new(RwLock::new(CONNECT_TIMEOUT));
             let conn_start_time = Instant::now();
             *SOLVING_PK_MISMATCH.lock().await = "".to_owned();
