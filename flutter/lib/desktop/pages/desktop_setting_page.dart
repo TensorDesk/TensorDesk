@@ -408,6 +408,7 @@ class _GeneralState extends State<_General> {
       isWeb ? RxBool(false) : Get.find<RxBool>(tag: 'stop-service');
   RxBool serviceBtnEnabled = true.obs;
   final GlobalKey _minToolbarOptionKey = GlobalKey();
+  bool _roleChanged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -417,6 +418,7 @@ class _GeneralState extends State<_General> {
       children: [
         if (!isWeb) service(),
         theme(),
+        if (!isWeb) deviceRole(),
         _Card(title: 'Language', children: [language()]),
         if (!isWeb) hwcodec(),
         if (!isWeb) audio(context),
@@ -490,6 +492,47 @@ class _GeneralState extends State<_General> {
           groupValue: current,
           label: 'Follow System',
           onChanged: isOptFixed ? null : onChanged),
+    ]);
+  }
+
+  String _currentRole() {
+    final v = bind.mainGetOptionSync(key: 'conn-type');
+    if (v.isNotEmpty) return v;
+    final h = bind.mainGetHardOption(key: 'conn-type');
+    return h.isEmpty ? 'both' : h;
+  }
+
+  Widget deviceRole() {
+    final current = _currentRole();
+    final fixed = isOptionFixed('conn-type');
+    void onChanged(String value) async {
+      await bind.mainSetOption(key: 'conn-type', value: value);
+      if (!mounted) return;
+      setState(() => _roleChanged = true);
+      reloadAllWindows();
+    }
+
+    return _Card(title: 'Device role', children: [
+      _Radio<String>(context,
+          value: 'both',
+          groupValue: current,
+          label: 'Both',
+          onChanged: fixed ? null : onChanged),
+      _Radio<String>(context,
+          value: 'incoming',
+          groupValue: current,
+          label: 'Incoming only',
+          onChanged: fixed ? null : onChanged),
+      _Radio<String>(context,
+          value: 'outgoing',
+          groupValue: current,
+          label: 'Outgoing only',
+          onChanged: fixed ? null : onChanged),
+      if (_roleChanged)
+        Text(
+          translate('Changes to device role take effect after restart.'),
+          style: TextStyle(fontSize: _kContentFontSize),
+        ).marginOnly(left: _kContentHMargin, top: 4),
     ]);
   }
 

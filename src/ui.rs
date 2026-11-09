@@ -289,11 +289,11 @@ impl UI {
     }
 
     fn is_incoming_only(&self) -> bool {
-        hbb_common::config::is_incoming_only()
+        base::config::is_incoming_only()
     }
 
     pub fn is_outgoing_only(&self) -> bool {
-        hbb_common::config::is_outgoing_only()
+        base::config::is_outgoing_only()
     }
 
     pub fn is_custom_client(&self) -> bool {

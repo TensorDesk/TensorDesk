@@ -273,7 +273,7 @@ impl RendezvousMediator {
 
     pub async fn start_all() {
         crate::test_nat_type();
-        if config::is_outgoing_only() {
+        if base::config::is_outgoing_only() {
             loop {
                 sleep(1.).await;
             }

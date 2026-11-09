@@ -826,5 +826,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Activate TensorDesk", "激活 TensorDesk"),
         ("Enter the activation code from the console", "输入控制台中的激活码"),
         ("Activation code", "激活码"),
+        ("Device role", "设备角色"),
+        ("Both", "双向"),
+        ("Incoming only", "仅被控"),
+        ("Outgoing only", "仅主控"),
+        ("Changes to device role take effect after restart.", "更改设备角色后需重启生效。"),
     ].iter().cloned().collect();
 }

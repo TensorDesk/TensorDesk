@@ -636,7 +636,7 @@ pub fn core_main() -> Option<CoreMainAction> {
         } else if args[0] == "--deploy" {
             if config::Config::no_register_device() {
                 println!("Cannot deploy an unregistrable device!");
-            } else if config::is_outgoing_only() {
+            } else if base::config::is_outgoing_only() {
                 println!("Cannot deploy Outgoing-only clients.");
             } else if crate::platform::is_installed() && is_root() {
                 let max = args.len() - 1;

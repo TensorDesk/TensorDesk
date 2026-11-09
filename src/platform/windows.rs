@@ -1740,7 +1740,7 @@ if exist \"{tmp_path}\\{app_name} Tray.lnk\" del /f /q \"{tmp_path}\\{app_name} 
         Config::set_option("api-server".into(), lic.api);
     }
 
-    let tray_shortcuts = if config::is_outgoing_only() {
+    let tray_shortcuts = if base::config::is_outgoing_only() {
         "".to_owned()
     } else {
         format!("
@@ -4053,7 +4053,7 @@ fn get_import_config(exe: &str) -> String {
     // --import-config does not register a service dispatcher, so SCM can report
     // a start failure even when import runs. Preserve this legacy contract for
     // older installed executables.
-    if config::is_outgoing_only() {
+    if base::config::is_outgoing_only() {
         return "".to_string();
     }
     let exe = escape_nested_cmd_ampersands(exe);
@@ -4072,7 +4072,7 @@ sc delete {app_name}
 }
 
 fn get_create_service(exe: &str) -> String {
-    if config::is_outgoing_only() {
+    if base::config::is_outgoing_only() {
         return "".to_string();
     }
     let stop = Config::get_option("stop-service") == "Y";

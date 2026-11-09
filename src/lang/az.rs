@@ -826,5 +826,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Activate TensorDesk", "TensorDesk-i aktivləşdir"),
         ("Enter the activation code from the console", "Konsoldan aktivləşdirmə kodunu daxil edin"),
         ("Activation code", "Aktivləşdirmə kodu"),
+        ("Device role", ""),
+        ("Both", ""),
+        ("Incoming only", ""),
+        ("Outgoing only", ""),
+        ("Changes to device role take effect after restart.", ""),
     ].iter().cloned().collect();
 }

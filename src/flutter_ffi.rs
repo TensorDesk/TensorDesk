@@ -2574,11 +2574,11 @@ pub fn main_support_remove_wallpaper() -> bool {
 }
 
 pub fn is_incoming_only() -> SyncReturn<bool> {
-    SyncReturn(config::is_incoming_only())
+    SyncReturn(base::config::is_incoming_only())
 }
 
 pub fn is_outgoing_only() -> SyncReturn<bool> {
-    SyncReturn(config::is_outgoing_only())
+    SyncReturn(base::config::is_outgoing_only())
 }
 
 pub fn is_custom_client() -> SyncReturn<bool> {
