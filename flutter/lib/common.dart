@@ -3664,6 +3664,10 @@ class TenantActivationResult {
 
 /// Pulls the server configuration for this tenant from the control plane and
 /// writes it into local options. The user only provides the activation code.
+///
+/// The one-time code (td1_) is first exchanged for the long-lived device
+/// credential (tdk_) at /api/client/enroll; the tdk_ is what gets stored as
+/// tenant-proof and used for every later control-plane call.
 Future<TenantActivationResult> activateTenant(String token) async {
   token = token.trim();
   if (token.isEmpty) {
@@ -3672,7 +3676,21 @@ Future<TenantActivationResult> activateTenant(String token) async {
   final base = kTenantApiBase.endsWith('/')
       ? kTenantApiBase.substring(0, kTenantApiBase.length - 1)
       : kTenantApiBase;
+  String responseMessage(http.Response response) {
+    var message = response.body;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['message'] != null) {
+        message = decoded['message'].toString();
+      }
+    } catch (_) {}
+    return message;
+  }
+
   try {
+    // Validate the code with bootstrap first: it does not consume the td1_,
+    // so a network failure here leaves the code usable for a retry. The
+    // consuming enroll call runs last, after which only local writes remain.
     final response = await http.get(
       Uri.parse('$base/api/client/bootstrap'),
       headers: {
@@ -3680,15 +3698,8 @@ Future<TenantActivationResult> activateTenant(String token) async {
         'Authorization': 'Bearer $token',
       },
     );
-    String message = response.body;
     if (response.statusCode != 200) {
-      try {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded['message'] != null) {
-          message = decoded['message'].toString();
-        }
-      } catch (_) {}
-      return TenantActivationResult(false, message);
+      return TenantActivationResult(false, responseMessage(response));
     }
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final host = (data['host'] ?? '').toString().trim();
@@ -3699,10 +3710,31 @@ Future<TenantActivationResult> activateTenant(String token) async {
     if (host.isEmpty || key.isEmpty) {
       return const TenantActivationResult(false, 'invalid bootstrap response');
     }
+    final enrollResponse = await http.post(
+      Uri.parse('$base/api/client/enroll'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'id': await bind.mainGetMyId(),
+        'uuid': await bind.mainGetUuid(),
+        'pk': await bind.mainGetPk(),
+      }),
+    );
+    if (enrollResponse.statusCode != 200) {
+      return TenantActivationResult(false, responseMessage(enrollResponse));
+    }
+    final enrollData = jsonDecode(enrollResponse.body) as Map<String, dynamic>;
+    final credential = (enrollData['token'] ?? '').toString().trim();
+    if (credential.isEmpty) {
+      return const TenantActivationResult(false, 'invalid enroll response');
+    }
     // Set the tenant credentials first: changing custom-rendezvous-server makes
     // the service restart the rendezvous mediator immediately.
     await bind.mainSetOption(key: 'tenant-id', value: tenantId);
-    await bind.mainSetOption(key: 'tenant-proof', value: token);
+    await bind.mainSetOption(key: 'tenant-proof', value: credential);
     final ok = await setServerConfig(
         null,
         null,

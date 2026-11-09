@@ -1047,6 +1047,11 @@ class RustdeskImpl {
     return Future(() => js.context.callMethod('getByName', ['uuid']));
   }
 
+  Future<String> mainGetPk({dynamic hint}) {
+    // Web does not enroll as a device; no keypair exists on this target.
+    return Future.value('');
+  }
+
   Future<String> mainGetPeerOption(
       {required String id, required String key, dynamic hint}) {
     return Future(() => mainGetPeerOptionSync(id: id, key: key, hint: hint));

@@ -1442,6 +1442,10 @@ pub fn main_get_uuid() -> String {
     get_uuid()
 }
 
+pub fn main_get_pk() -> String {
+    crate::encode64(hbb_common::config::Config::get_key_pair().1)
+}
+
 pub fn main_get_peer_option(id: String, key: String) -> String {
     get_peer_option(id, key)
 }
