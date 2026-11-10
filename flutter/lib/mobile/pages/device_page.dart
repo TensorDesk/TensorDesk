@@ -24,7 +24,7 @@ class _DevicesPageState extends State<DevicesPage> {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.all(8),
-      child: const TenantDeviceList(),
+      child: const TenantDeviceList(showActivation: true),
     );
   }
 }

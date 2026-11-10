@@ -4,17 +4,28 @@ import 'package:flutter_hbb/common/formatter/id_formatter.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/tenant_devices_model.dart';
+import 'package:flutter_hbb/models/tenant_session.dart'
+    if (dart.library.html) 'package:flutter_hbb/web/tenant_session_web.dart';
+import 'package:flutter_hbb/mobile/widgets/dialog.dart';
 import 'package:get/get.dart';
 
-/// Read-only list of the devices in the workspace this build is activated in.
+/// List of the devices in the workspace this build is activated in.
 /// Renders nothing when there is no stored credential, so non-managed builds
 /// and not-yet-activated devices keep their previous home page.
 class TenantDeviceList extends StatefulWidget {
-  const TenantDeviceList({Key? key, this.compact = false}) : super(key: key);
+  const TenantDeviceList({
+    Key? key,
+    this.compact = false,
+    this.showActivation = false,
+  }) : super(key: key);
 
   /// Compact mode is used inside the desktop home pane; otherwise the list
   /// fills the page it is placed on.
   final bool compact;
+
+  /// Shows the activation entry when this build has no credential yet. Only
+  /// mobile and web pass `true`; the desktop gates the whole UI already.
+  final bool showActivation;
 
   @override
   State<TenantDeviceList> createState() => _TenantDeviceListState();
@@ -56,7 +67,9 @@ class _TenantDeviceListState extends State<TenantDeviceList> {
   @override
   Widget build(BuildContext context) {
     if (bind.mainGetOptionSync(key: 'tenant-proof').trim().isEmpty) {
-      return const SizedBox.shrink();
+      return widget.showActivation
+          ? _buildNotActivated(context)
+          : const SizedBox.shrink();
     }
     final body = _buildBody(context);
     if (widget.compact) {
@@ -76,6 +89,33 @@ class _TenantDeviceListState extends State<TenantDeviceList> {
       children: [
         _buildHeader(context),
         Expanded(child: body),
+      ],
+    );
+  }
+
+  Widget _buildNotActivated(BuildContext context) {
+    final color = Theme.of(context).textTheme.titleLarge?.color?.withOpacity(0.6);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.devices_other, size: 40, color: color),
+        const SizedBox(height: 8),
+        Text(
+          translate('Activate TensorDesk'),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          translate('Enter the activation code from the console'),
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: color),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => showActivationDialog(gFFI.dialogManager, _load),
+          child: Text(translate('Use an activation code')),
+        ),
       ],
     );
   }
@@ -160,6 +200,7 @@ class _TenantDeviceListState extends State<TenantDeviceList> {
     return ListTile(
       dense: true,
       visualDensity: VisualDensity.compact,
+      onTap: () => openTenantDeviceSession(context, device.rustdeskId),
       contentPadding: widget.compact
           ? const EdgeInsets.symmetric(horizontal: 4, vertical: 0)
           : null,

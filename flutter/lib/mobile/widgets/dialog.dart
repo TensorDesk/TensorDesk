@@ -247,7 +247,7 @@ void showActivationDialog(OverlayDialogManager dialogManager,
     return CustomAlertDialog(
       title: Text(translate('Activate TensorDesk')),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 500),
+        constraints: BoxConstraints(minWidth: isDesktop ? 500 : 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

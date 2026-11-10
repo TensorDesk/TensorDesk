@@ -171,7 +171,22 @@ class WebHomePage extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: Text("${bind.mainGetAppNameSync()} (Preview)"),
-        actions: connectionPage.appBarActions,
+        actions: [
+          IconButton(
+            tooltip: translate('Devices'),
+            icon: const Icon(Icons.devices),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: Text(translate('Devices'))),
+                  body: DevicesPage(),
+                ),
+              ),
+            ),
+          ),
+          ...connectionPage.appBarActions
+        ],
       ),
       body: connectionPage,
     );

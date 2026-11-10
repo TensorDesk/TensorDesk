@@ -836,5 +836,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Incorrect username or password", "用户名或密码错误"),
         ("This device is not provisioned. Please contact your administrator.", "设备未部署，请联系管理员。"),
         ("Use an activation code", "使用激活码"),
+        ("Please close the current remote desktop first", "请先关闭当前远程桌面"),
     ].iter().cloned().collect();
 }
