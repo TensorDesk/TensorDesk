@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
+import 'package:flutter_hbb/common/widgets/tenant_device_list.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
@@ -93,6 +94,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
+      if (bind.isCustomClient() && !isIncomingOnly) buildDeviceList(context),
       FutureBuilder<Widget>(
         future: Future.value(
             Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
@@ -183,6 +185,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ConnectionPage(),
+    );
+  }
+
+  Widget buildDeviceList(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(left: 20, right: 11, top: 12),
+      child: const TenantDeviceList(compact: true),
     );
   }
 
@@ -703,7 +712,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!isWeb && await bind.mainIsUsingPublicServer()) {
         if (bind.mainGetBuildinOption(key: kOptionHideServerSetting) == 'Y') {
-          showActivationDialog(gFFI.dialogManager, setState);
+          showActivationDialog(gFFI.dialogManager, () => setState(() {}));
         } else {
           showServerSettings(gFFI.dialogManager, setState);
         }

@@ -831,5 +831,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Incoming only", ""),
         ("Outgoing only", ""),
         ("Changes to device role take effect after restart.", ""),
+        ("Devices", ""),
+        ("No devices", ""),
     ].iter().cloned().collect();
 }
