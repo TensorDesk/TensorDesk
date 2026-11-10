@@ -45,5 +45,5 @@
 ## 阶段 F：文档与收尾
 
 - [x] F1 更新 `tensorManage/docs/app-design.md`（§3.1/§3.2/§4.1/§5.1.1/§6/§7 + §10 验证记录）
-- [ ] F2 提交并推送 rustdesk、tensorManage
-- [ ] F3 关闭 `TensorDesk#8`，回填验证结论
+- [x] F2 提交并推送 rustdesk（`6c0663265`）、tensorManage（`91a4b59`）
+- [ ] F3 关闭 `TensorDesk#8`，回填验证结论（已回填 [comment](https://github.com/TensorDesk/TensorDesk/issues/8#issuecomment-6757772946)；因 E6 真机手测待确认，issue 暂不关闭）
