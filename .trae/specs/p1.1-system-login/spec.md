@@ -6,18 +6,20 @@
 
 ## 1. 目标与边界
 
-托管桌面客户端启动时不再要求粘贴 `td1_`，改为用**本机系统账号密码**登录：
+托管桌面客户端在**打开设备列表**时才要求用本机系统账号密码登录（启动、显示本机 ID/密码、被远程控制都不要求）：
 
 1. 密码只在本机校验（Linux/macOS PAM，Windows `LogonUserW`），不上传、不落盘、不进日志。
-2. 本地已有 `tdk_`（option `tenant-proof`）→ 校验通过后直接解锁 UI。
-3. 无 `tdk_` 但有安装预置的 `tenant-enroll-token` → 校验通过后自动 `enroll` + `bootstrap`（复用 `activateTenant`），成功后解锁。
-4. 无 `tdk_` 且无预置令牌 → 提示「设备未部署，请联系管理员」，并保留手动激活码入口兜底。
+2. 登录成功后只解锁本次运行内的设备列表；关闭 app 后失效。
+3. 登录只做身份校验，不决定凭证：列表区在没有 `tenant-proof` 时显示 `td1_` 激活入口。
+4. 被控端（本机暴露服务）通过 `td1_` 激活（设置页「Activate TensorDesk」或列表入口），不需要系统登录。
 
 边界（明确不做）：
 
+- 启动不拦截；被控端未激活也能看到本机 ID。
 - 桌面端为系统账号登录；移动端 / Web 端以 `td1_` 激活入口进入，可查看并连接同一 workspace 的设备（见后续「多端设备列表与连接」变更）。
 - 只做本地 UI 门禁：不改变服务进程、hbbs 注册、远端连接、bootstrap 周期刷新。
 - 不做系统会话监控（注销/切换用户自动回登录页）；由 OS 锁屏承担，写入设计文档「已知限制」。
+- 登录状态不持久化；不做「记住登录」。
 - 不新增 `os-user` 持久化；`os_user` 上报属于 P3，届时用 `current_username()` 取值。
 - 不建控制面登录会话，控制面仍只认 `tdk_`。
 
@@ -107,49 +109,36 @@ account   required   pam_unix.so
 
 ### 3.1 新文件 `flutter/lib/desktop/pages/tenant_login_page.dart`
 
-**`TenantLoginGate extends StatefulWidget`**
+**`TenantDeviceGate extends StatefulWidget`**（桌面设备列表入口）
 
-- 构造：`const TenantLoginGate({required this.child})`。
-- `build`：`if (!isDesktop || isWeb || !bind.isCustomClient()) return child;`
-  否则 `_unlocked ? child : TenantLoginPage(onUnlocked: ...)`。
-- 未解锁时**不构建** `child`（避免 `DesktopHomePage.initState` 里的首启激活弹窗被触发），因此
-  `desktop_home_page.dart` 无需改动。
+- 构造：`const TenantDeviceGate({this.compact = true})`。
+- `build`：
+  - `!bind.isCustomClient()` → 直接 `TenantDeviceList(compact: ...)`，非托管构建行为不变。
+  - 本次运行已解锁 → `TenantDeviceList(compact: ..., showActivation: true)`。
+  - 未解锁 → 锁图标 + 「Login」，点击 push `TenantLoginPage`。
+- 解锁状态只在该 State 中，关闭 app 后失效；启动、本机 ID/密码展示、被远程控制都不经过门禁。
 
 **`TenantLoginPage extends StatefulWidget`**
 
 - 可注入依赖以便测试：
   - `Future<bool> Function(String username, String password)? verify`
-  - `Future<TenantActivationResult> Function(String token)? activate`
   - `Future<String> Function()? loadUsername`
   - `VoidCallback onUnlocked`
 - `initState`：`loadUsername`（默认 `bind.mainGetSystemUsername()`）填入用户名输入框。
-- UI：标题、只读/可编辑用户名字段、密码字段（`obscureText`）、登录按钮、loading 态、错误文案、
-  未部署时的「使用激活码」按钮（`TextButton`）。
+- UI：AppBar（可返回）、系统账号登录提示、用户名字段、密码字段（`obscureText`）、登录按钮与 loading 态、错误文案。
 - 提交逻辑：
   1. 空用户名/密码 → 错误文案，不调用 FFI。
   2. `verified = await verify(u, p)`；无论结果，**立即清空密码控件**（`passwordController.clear()`）。
   3. `false` → 统一错误「用户名或密码错误」。
-  4. `true` → 读 `bind.mainGetOptionSync(key: 'tenant-proof')`：
-     - 非空 → `onUnlocked()`。
-     - 为空 → 读 `tenant-enroll-token`：
-       - 非空 → `await activate(token)`；`ok` → `onUnlocked()`，否则显示返回的 `message`。
-       - 为空 → 显示「设备未部署，请联系管理员」+ 显示「使用激活码」按钮。
-- 「使用激活码」：复用 `showActivationDialog(Get.find<DialogManager>(), () { ... })`
-  （`flutter/lib/mobile/widgets/dialog.dart`），回调里重新读取 `tenant-proof`，非空即 `onUnlocked()`。
-  若 `DialogManager` 在登录页上下文不可解析，则用最小 `AlertDialog` + `TextField` + `activateTenant` 实现，
-  不再引入新的弹窗框架。
+  4. `true` → `onUnlocked()`。凭证读取与激活不在登录页处理。
 
-### 3.2 接入门禁（`flutter/lib/main.dart` L504-508）
+### 3.2 接入门禁（`flutter/lib/desktop/pages/desktop_home_page.dart` 的 `buildDeviceList`）
 
 ```dart
-home: isDesktop
-    ? const TenantLoginGate(child: DesktopTabPage())
-    : isWeb
-        ? WebHomePage()
-        : HomePage(),
+child: const TenantDeviceGate(),
 ```
 
-移动端分支不变。
+启动入口（`flutter/lib/main.dart`）仍为 `DesktopTabPage()`，不做启动门禁。
 
 ### 3.3 Web bridge（`flutter/lib/web/bridge.dart`，L1721 `isCustomClient` 附近）
 
@@ -182,23 +171,23 @@ Future<String> mainGetSystemUsername({dynamic hint}) async => '';
 | 4 | Dart 单测 | `flutter test` | 原有 145 passed / 1 skipped + 新增用例通过 |
 | 5 | 新增 widget 测试 | `flutter/test/tenant_login_page_test.dart` | 见 §4.1 |
 | 6 | 密码不外泄 | `grep` 全仓 `password` 日志点 + 运行时日志抽查 | 无密码出现在日志/选项/网络请求 |
-| 7 | 真机手测（Linux） | 托管构建启动，输入本机账号密码 | 有 `tenant-proof` 直接进入；无 proof 且无令牌显示未部署提示；手动激活码可兜底 |
+| 7 | 真机手测（Linux） | 托管构建启动 | 启动直接进首页并显示本机 ID；点击设备列表区的登录入口并输入本机账号密码后才显示列表；无 proof 时列表区显示 `td1_` 激活入口 |
 
 ### 4.1 widget 测试用例（注入回调，不依赖真实 PAM）
 
 1. `verify=false` → 显示统一错误，密码字段已清空。
-2. `verify=true` + `tenant-proof` 非空 → `onUnlocked` 被调用、`child` 出现。
-3. `verify=true` + 无 proof + 无 `tenant-enroll-token` → 显示「设备未部署」且未解锁。
-4. `verify=true` + 无 proof + 有令牌 → `activate` 被调用一次且解锁。
-5. 空密码 → 不调用 `verify`。
+2. `verify=true` → `onUnlocked` 被调用。
+3. 空密码 → 不调用 `verify`。
+4. 托管构建未解锁 → 只显示登录入口、不构建设备列表；非托管构建 → 直接显示设备列表。
 
 ## 5. 回归面（必须逐项确认未被改动）
 
 - `src/server/*`、`src/service.rs`、`src/rendezvous_mediator.rs`、`src/tenant_bootstrap.rs`：**零改动**。
-- 移动端 `flutter/lib/mobile/**`：除 `dialog.dart` 无改动（仅被调用）。
-- Web：仅 `flutter/lib/web/bridge.dart` 加两个 no-op 方法。
-- `desktop_home_page.dart`、`tenant_device_list.dart`：零改动。
-- 现有 `activateTenant` / `setServerConfig` 逻辑：零改动，仅被新页面调用。
+- 移动端 `flutter/lib/mobile/**`：仅 `dialog.dart` 宽度与设备页激活入口，无门禁。
+- Web：`flutter/lib/web/bridge.dart` 仅加两个 no-op 方法。
+- `desktop_home_page.dart`：仅 `buildDeviceList` 换成 `TenantDeviceGate`。
+- `main.dart`：`home` 为 `DesktopTabPage()`，没有启动门禁。
+- 现有 `activateTenant` / `setServerConfig` 逻辑：零改动，仅被设置页与设备列表入口调用。
 
 ## 6. 文档与收尾
 
@@ -209,6 +198,6 @@ Future<String> mainGetSystemUsername({dynamic hint}) async => '';
 
 ## 7. 已知限制（写入 PR/文档，不在本阶段修）
 
-- 无系统会话监控：注销/切换用户不会自动回登录页；应用下次启动仍需登录。
+- 登录状态只在本次运行内有效，关闭 app 后重新登录；不做系统会话监控。
 - 密码在 Dart 字符串中无法安全清零（只能 `clear()` 控件），仅保证不使用、不传输、不落盘。
 - 用户名为空或含未知格式时按失败处理；Linux/macOS 非 root 只能校验当前登录用户。

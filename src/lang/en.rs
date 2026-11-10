@@ -295,5 +295,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("This device is not provisioned. Please contact your administrator.", ""),
         ("Use an activation code", ""),
         ("Please close the current remote desktop first", ""),
+        ("Sign in with your system account", ""),
     ].iter().cloned().collect();
 }

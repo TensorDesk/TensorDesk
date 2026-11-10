@@ -1,37 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/common/widgets/tenant_device_list.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
-import 'package:flutter_hbb/mobile/widgets/dialog.dart';
 
-const _kOptionTenantProof = 'tenant-proof';
-const _kOptionTenantEnrollToken = 'tenant-enroll-token';
-
-/// Gates the desktop UI behind the local OS account.
+/// Desktop entry to the workspace device list.
 ///
-/// Only managed desktop builds are gated. The service and any existing remote
-/// session keep running; this only controls what the local user can see.
-class TenantLoginGate extends StatefulWidget {
-  const TenantLoginGate({Key? key, required this.child}) : super(key: key);
+/// Opening the app, showing this machine's ID/password and being controlled do
+/// not require it: signing in only guards viewing and connecting the workspace
+/// devices, and the unlock lasts for the current run.
+class TenantDeviceGate extends StatefulWidget {
+  const TenantDeviceGate({Key? key, this.compact = true}) : super(key: key);
 
-  final Widget child;
+  final bool compact;
 
   @override
-  State<TenantLoginGate> createState() => _TenantLoginGateState();
+  State<TenantDeviceGate> createState() => _TenantDeviceGateState();
 }
 
-class _TenantLoginGateState extends State<TenantLoginGate> {
+class _TenantDeviceGateState extends State<TenantDeviceGate> {
   bool _unlocked = false;
 
   @override
   Widget build(BuildContext context) {
-    if (!isDesktop || isWeb || !bind.isCustomClient()) {
-      return widget.child;
+    if (!bind.isCustomClient()) {
+      return TenantDeviceList(compact: widget.compact);
     }
-    return _unlocked
-        ? widget.child
-        : TenantLoginPage(
-            onUnlocked: () => setState(() => _unlocked = true),
-          );
+    if (_unlocked) {
+      return TenantDeviceList(compact: widget.compact, showActivation: true);
+    }
+    final color = Theme.of(context).textTheme.titleLarge?.color?.withOpacity(0.6);
+    return InkWell(
+      onTap: _login,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.lock_outline, size: 32, color: color),
+          const SizedBox(height: 8),
+          Text(
+            translate('Login'),
+            style: TextStyle(fontSize: 13, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _login() async {
+    final unlocked = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (ctx) => TenantLoginPage(
+        onUnlocked: () => Navigator.of(ctx).pop(true),
+      ),
+    ));
+    if (unlocked == true && mounted) {
+      setState(() => _unlocked = true);
+    }
   }
 }
 
@@ -40,16 +62,12 @@ class TenantLoginPage extends StatefulWidget {
     Key? key,
     required this.onUnlocked,
     this.verify,
-    this.activate,
     this.loadUsername,
-    this.readOption,
   }) : super(key: key);
 
   final VoidCallback onUnlocked;
   final Future<bool> Function(String username, String password)? verify;
-  final Future<TenantActivationResult> Function(String token)? activate;
   final Future<String> Function()? loadUsername;
-  final String Function(String key)? readOption;
 
   @override
   State<TenantLoginPage> createState() => _TenantLoginPageState();
@@ -59,7 +77,6 @@ class _TenantLoginPageState extends State<TenantLoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _busy = false;
-  bool _showActivationFallback = false;
   String _error = '';
 
   @override
@@ -76,8 +93,7 @@ class _TenantLoginPageState extends State<TenantLoginPage> {
   }
 
   Future<void> _fillUsername() async {
-    final load = widget.loadUsername ??
-        () => bind.mainGetSystemUsername();
+    final load = widget.loadUsername ?? () => bind.mainGetSystemUsername();
     final name = await load();
     if (!mounted) return;
     setState(() => _usernameController.text = name);
@@ -90,9 +106,6 @@ class _TenantLoginPageState extends State<TenantLoginPage> {
         username: username, password: password);
   }
 
-  String _option(String key) =>
-      widget.readOption?.call(key) ?? bind.mainGetOptionSync(key: key);
-
   Future<void> _submit() async {
     if (_busy) return;
     final username = _usernameController.text.trim();
@@ -104,7 +117,6 @@ class _TenantLoginPageState extends State<TenantLoginPage> {
     setState(() {
       _busy = true;
       _error = '';
-      _showActivationFallback = false;
     });
     var verified = false;
     try {
@@ -122,58 +134,15 @@ class _TenantLoginPageState extends State<TenantLoginPage> {
       });
       return;
     }
-    await _afterVerified();
-  }
-
-  Future<void> _afterVerified() async {
-    if (_option(_kOptionTenantProof).trim().isNotEmpty) {
-      _unlock();
-      return;
-    }
-    final token = _option(_kOptionTenantEnrollToken).trim();
-    if (token.isEmpty) {
-      _notProvisioned();
-      return;
-    }
-    final activate = widget.activate ?? activateTenant;
-    final result = await activate(token);
-    if (!mounted) return;
-    if (result.ok) {
-      _unlock();
-      return;
-    }
-    _notProvisioned(result.message);
-  }
-
-  void _notProvisioned([String message = '']) {
-    setState(() {
-      _busy = false;
-      _showActivationFallback = true;
-      _error = message.isNotEmpty
-          ? message
-          : translate(
-              'This device is not provisioned. Please contact your administrator.');
-    });
-  }
-
-  void _unlock() {
     setState(() => _busy = false);
     widget.onUnlocked();
-  }
-
-  void _showActivationCode() {
-    showActivationDialog(gFFI.dialogManager, () {
-      if (!mounted) return;
-      if (_option(_kOptionTenantProof).trim().isNotEmpty) {
-        widget.onUnlocked();
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final textColor = Theme.of(context).textTheme.titleLarge?.color;
     return Scaffold(
+      appBar: AppBar(title: Text(translate('Login'))),
       body: Center(
         child: SizedBox(
           width: 340,
@@ -185,12 +154,11 @@ class _TenantLoginPageState extends State<TenantLoginPage> {
                   size: 56, color: MyTheme.accent),
               const SizedBox(height: 16),
               Text(
-                translate('Login'),
+                translate('Sign in with your system account'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: textColor),
+                    fontSize: 15,
+                    color: textColor?.withOpacity(0.7)),
               ),
               const SizedBox(height: 24),
               TextField(
@@ -232,11 +200,6 @@ class _TenantLoginPageState extends State<TenantLoginPage> {
                         child: CircularProgressIndicator(strokeWidth: 2))
                     : Text(translate('Login')),
               ),
-              if (_showActivationFallback)
-                TextButton(
-                  onPressed: _busy ? null : _showActivationCode,
-                  child: Text(translate('Use an activation code')),
-                ),
             ],
           ),
         ),

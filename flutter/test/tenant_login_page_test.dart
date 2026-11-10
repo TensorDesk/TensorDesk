@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/common/widgets/tenant_device_list.dart';
 import 'package:flutter_hbb/desktop/pages/tenant_login_page.dart';
 import 'package:flutter_hbb/generated_bridge.dart';
 import 'package:flutter_hbb/models/native_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Only `translate` is reached by the page; everything else goes through the
-/// injected callbacks.
+/// Only `translate`, `isCustomClient`, the stored options and the system user
+/// name are reached; password checks go through the injected callbacks.
 class _FakeBind implements RustdeskImpl {
   static bool custom = false;
 
@@ -18,20 +18,23 @@ class _FakeBind implements RustdeskImpl {
   bool isCustomClient({dynamic hint}) => custom;
 
   @override
+  String mainGetOptionSync({required String key, dynamic hint}) => '';
+
+  @override
   Future<String> mainGetSystemUsername({dynamic hint}) async => 'alice';
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Widget _app(Widget child) => MaterialApp(home: child);
+Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 Future<void> _enterPassword(WidgetTester tester, String password) async {
   await tester.enterText(find.byType(TextField).at(1), password);
 }
 
 Future<void> _tapLogin(WidgetTester tester) async {
-  await tester.tap(find.byType(ElevatedButton));
+  await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
   await tester.pumpAndSettle();
 }
 
@@ -42,23 +45,29 @@ void main() {
 
   setUp(() => _FakeBind.custom = false);
 
-  testWidgets('managed build shows the login page instead of the app',
+  testWidgets('managed build guards the device list behind a login entry',
       (tester) async {
     _FakeBind.custom = true;
-    await tester.pumpWidget(_app(const TenantLoginGate(child: Text('home'))));
+    await tester.pumpWidget(_app(const TenantDeviceGate()));
     await tester.pumpAndSettle();
 
-    expect(find.text('home'), findsNothing);
-    expect(find.text('Login'), findsWidgets);
+    expect(find.byType(TenantDeviceList), findsNothing);
+    expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.lock_outline));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TenantLoginPage), findsOneWidget);
   });
 
-  testWidgets('unmanaged build shows the app without a login page',
+  testWidgets('unmanaged build keeps the device list without a login entry',
       (tester) async {
-    await tester.pumpWidget(_app(const TenantLoginGate(child: Text('home'))));
+    await tester.pumpWidget(_app(const TenantDeviceGate()));
     await tester.pumpAndSettle();
 
-    expect(find.text('home'), findsOneWidget);
-    expect(find.text('Login'), findsNothing);
+    expect(find.byType(TenantDeviceList), findsOneWidget);
+    expect(find.byIcon(Icons.lock_outline), findsNothing);
+    expect(find.byType(TenantLoginPage), findsNothing);
   });
 
   testWidgets('wrong password shows one generic error and clears it',
@@ -72,7 +81,6 @@ void main() {
         calls++;
         return false;
       },
-      readOption: (_) => '',
     )));
     await tester.pumpAndSettle();
     expect(find.text('alice'), findsOneWidget);
@@ -87,71 +95,18 @@ void main() {
     expect(password.controller!.text, isEmpty);
   });
 
-  testWidgets('existing device credential unlocks without enrolling',
-      (tester) async {
+  testWidgets('correct password unlocks for this run', (tester) async {
     var unlocked = false;
-    var activated = 0;
     await tester.pumpWidget(_app(TenantLoginPage(
       onUnlocked: () => unlocked = true,
       loadUsername: () async => 'alice',
       verify: (u, p) async => true,
-      activate: (token) async {
-        activated++;
-        return const TenantActivationResult(true, '');
-      },
-      readOption: (key) => key == 'tenant-proof' ? 'tdk_x' : '',
     )));
     await tester.pumpAndSettle();
 
     await _enterPassword(tester, 'secret');
     await _tapLogin(tester);
 
-    expect(unlocked, isTrue);
-    expect(activated, 0);
-  });
-
-  testWidgets('no credential and no token reports an unprovisioned device',
-      (tester) async {
-    var unlocked = false;
-    await tester.pumpWidget(_app(TenantLoginPage(
-      onUnlocked: () => unlocked = true,
-      loadUsername: () async => 'alice',
-      verify: (u, p) async => true,
-      readOption: (_) => '',
-    )));
-    await tester.pumpAndSettle();
-
-    await _enterPassword(tester, 'secret');
-    await _tapLogin(tester);
-
-    expect(unlocked, isFalse);
-    expect(
-        find.text(
-            'This device is not provisioned. Please contact your administrator.'),
-        findsOneWidget);
-    expect(find.text('Use an activation code'), findsOneWidget);
-  });
-
-  testWidgets('provisioned token enrolls and unlocks',
-      (tester) async {
-    var unlocked = false;
-    String? usedToken;
-    await tester.pumpWidget(_app(TenantLoginPage(
-      onUnlocked: () => unlocked = true,
-      loadUsername: () async => 'alice',
-      verify: (u, p) async => true,
-      activate: (token) async {
-        usedToken = token;
-        return const TenantActivationResult(true, '');
-      },
-      readOption: (key) => key == 'tenant-enroll-token' ? ' td1_abc ' : '',
-    )));
-    await tester.pumpAndSettle();
-
-    await _enterPassword(tester, 'secret');
-    await _tapLogin(tester);
-
-    expect(usedToken, 'td1_abc');
     expect(unlocked, isTrue);
   });
 
@@ -164,7 +119,6 @@ void main() {
         calls++;
         return true;
       },
-      readOption: (_) => 'tdk_x',
     )));
     await tester.pumpAndSettle();
 
