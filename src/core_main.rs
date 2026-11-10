@@ -47,6 +47,9 @@ pub fn core_main() -> Option<CoreMainAction> {
         return None;
     }
     crate::load_custom_client();
+    // Non-UI processes (`--server` among them) never reach flutter_ffi's
+    // initialize(); the managed-build gate and tenant bootstrap live there.
+    crate::common::apply_managed_defaults();
     #[cfg(windows)]
     if !crate::platform::windows::bootstrap() {
         // return None to terminate the process
