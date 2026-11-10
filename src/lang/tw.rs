@@ -833,5 +833,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Changes to device role take effect after restart.", ""),
         ("Devices", "裝置"),
         ("No devices", "沒有裝置"),
+        ("Incorrect username or password", "使用者名稱或密碼錯誤"),
+        ("This device is not provisioned. Please contact your administrator.", "裝置未部署，請聯絡管理員。"),
+        ("Use an activation code", "使用啟用碼"),
     ].iter().cloned().collect();
 }
