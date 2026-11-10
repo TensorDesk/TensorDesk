@@ -1,10 +1,22 @@
 # P1.1 系统账号登录 — 任务清单
 
+**已取消（2026-11-10）**：产品改为「token 只看列表，连接用 RustDesk 原生远端密码框」，本机账号登录整体移除。
+已完成的任务保留勾选作为历史记录；新增的移除任务见下方「取消清理」。
+
 规格：[spec.md](./spec.md)
 
 实现偏差（已记录）：`pam` crate 依赖 bindgen + libpam 头文件，本地与 CI 都会引入额外构建依赖，
 不足以支撑“可复现构建”，因此改为 `libloading` 运行时 `dlopen("libpam.so.0")`，接口不变；
 对应地不再需要 `libpam0g-dev`（D3 取消）。
+
+## 取消清理
+
+- [x] G1 删除 `tenant_login_page.dart` / `tenant_login_page_test.dart`、`src/system_auth.rs`
+- [x] G2 删除 FFI `main_verify_system_credentials` / `main_get_system_username` 及 bridge 三处、web no-op
+- [x] G3 删除 `Cargo.toml` 的 `libc`/`libloading` 目标依赖、`OPTION_TENANT_ENROLL_TOKEN`
+- [x] G4 删除 `res/pam.d/tensordesk` 与 `build.py` 打包行
+- [x] G5 桌面设备列表改为 `TenantDeviceList(compact: true, showActivation: true)`
+- [x] G6 移除登录相关 lang key（54 个文件）
 
 ## 阶段 A：Rust 本机校验
 

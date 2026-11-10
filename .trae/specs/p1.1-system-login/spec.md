@@ -1,8 +1,10 @@
 # P1.1 系统账号登录 — 实施规格
 
-状态：待评审
+状态：**已取消（2026-11-10）**
 前置：P1（`tdk_` 落地、bootstrap 刷新、401 回退）已实现并验证；P2 设备列表已完成。
 设计依据：`/home/portion/tensorManage/docs/app-design.md` §4.1、§5.1.1、§6、§7。
+
+> 取消原因：本机系统账号只适合做设备本地的 UI 门禁，而产品要求是「填 token 即可看到设备列表，点设备连接时才需要密码，且密码由远端校验」。因此本机 PAM/`LogonUserW` 登录、`TenantDeviceGate`、相关 FFI/bridge、`res/pam.d/tensordesk` 与 `tenant-enroll-token` 键均已移除；连接复用 RustDesk 原生远端密码框。下文保留为历史设计记录。
 
 ## 1. 目标与边界
 

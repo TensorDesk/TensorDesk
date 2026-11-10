@@ -1495,14 +1495,6 @@ pub fn main_peer_has_password(id: String) -> bool {
     peer_has_password(id)
 }
 
-pub fn main_verify_system_credentials(username: String, password: String) -> bool {
-    crate::system_auth::verify(&username, &password)
-}
-
-pub fn main_get_system_username() -> String {
-    crate::system_auth::current_username()
-}
-
 pub fn main_peer_exists(id: String) -> bool {
     peer_exists(&id)
 }

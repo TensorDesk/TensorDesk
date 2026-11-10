@@ -8,11 +8,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
+import 'package:flutter_hbb/common/widgets/tenant_device_list.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
-import 'package:flutter_hbb/desktop/pages/tenant_login_page.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/mobile/widgets/dialog.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
@@ -191,7 +191,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildDeviceList(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(left: 20, right: 11, top: 12),
-      child: const TenantDeviceGate(),
+      child: const TenantDeviceList(compact: true, showActivation: true),
     );
   }
 

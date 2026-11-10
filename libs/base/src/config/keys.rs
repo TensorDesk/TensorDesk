@@ -78,7 +78,6 @@ pub const OPTION_API_SERVER: &str = "api-server";
 pub const OPTION_KEY: &str = "key";
 pub const OPTION_TENANT_ID: &str = "tenant-id";
 pub const OPTION_TENANT_PROOF: &str = "tenant-proof";
-pub const OPTION_TENANT_ENROLL_TOKEN: &str = "tenant-enroll-token";
 pub const OPTION_BOOTSTRAP_FETCHED_AT: &str = "bootstrap-fetched-at";
 pub const OPTION_PRESET_ADDRESS_BOOK_NAME: &str = "preset-address-book-name";
 pub const OPTION_PRESET_ADDRESS_BOOK_TAG: &str = "preset-address-book-tag";

@@ -23,8 +23,7 @@ class TenantDeviceList extends StatefulWidget {
   /// fills the page it is placed on.
   final bool compact;
 
-  /// Shows the activation entry when this build has no credential yet. Only
-  /// mobile and web pass `true`; the desktop gates the whole UI already.
+  /// Shows the activation entry when this build has no credential yet.
   final bool showActivation;
 
   @override

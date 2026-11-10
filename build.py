@@ -752,8 +752,6 @@ def build_flutter_deb(version, features):
         f'cp -r {flutter_build_dir}/* tmpdeb/usr/share/tensordesk/')
     system2(
         'cp ../res/tensordesk.service tmpdeb/usr/share/tensordesk/files/systemd/')
-    system2('mkdir -p tmpdeb/etc/pam.d')
-    system2('cp ../res/pam.d/tensordesk tmpdeb/etc/pam.d/tensordesk')
     system2(
         'cp ../res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/tensordesk.png')
     system2(

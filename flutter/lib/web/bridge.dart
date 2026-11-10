@@ -1723,16 +1723,6 @@ class RustdeskImpl {
     return mainGetAppNameSync(hint: hint) != "TensorDesk";
   }
 
-  Future<bool> mainVerifySystemCredentials(
-      {required String username, required String password, dynamic hint}) {
-    // The web client has no OS account to verify against.
-    return Future.value(false);
-  }
-
-  Future<String> mainGetSystemUsername({dynamic hint}) {
-    return Future.value('');
-  }
-
   bool isDisableSettings({dynamic hint}) {
     // Checks HARD_SETTINGS["disable-settings"] == "Y"
     return mainGetHardOption(key: "disable-settings", hint: hint) == "Y";

@@ -833,10 +833,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Changes to device role take effect after restart.", ""),
         ("Devices", ""),
         ("No devices", ""),
-        ("Incorrect username or password", ""),
-        ("This device is not provisioned. Please contact your administrator.", ""),
         ("Use an activation code", ""),
         ("Please close the current remote desktop first", ""),
-        ("Sign in with your system account", ""),
     ].iter().cloned().collect();
 }

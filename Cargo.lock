@@ -7122,8 +7122,6 @@ dependencies = [
  "kcp-sys",
  "keepawake",
  "lazy_static",
- "libc",
- "libloading 0.8.4",
  "libpulse-binding",
  "libpulse-simple-binding",
  "libsamplerate-sys",
