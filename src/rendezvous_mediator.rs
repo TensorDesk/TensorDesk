@@ -1311,7 +1311,7 @@ impl RendezvousMediator {
         if !Config::get_key_confirmed() || !Config::get_host_key_confirmed(&self.host_prefix) {
             log::info!(
                 "register_pk of {} due to key not confirmed",
-                self.host_prefix
+                base::redact::host_tag(&self.host_prefix)
             );
             return self.register_pk(socket).await;
         }
