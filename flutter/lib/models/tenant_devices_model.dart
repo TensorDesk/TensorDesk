@@ -85,3 +85,27 @@ Future<List<TenantDevice>> fetchTenantDevices() async {
       .map(TenantDevice.fromJson)
       .toList();
 }
+
+/// Renames a device of the credential's workspace; throws on HTTP error.
+Future<void> renameTenantDevice(String deviceId, String name) async {
+  final proof = bind.mainGetOptionSync(key: 'tenant-proof').trim();
+  if (proof.isEmpty) {
+    throw Exception('not activated');
+  }
+  final base = kTenantApiBase.endsWith('/')
+      ? kTenantApiBase.substring(0, kTenantApiBase.length - 1)
+      : kTenantApiBase;
+  final response = await http.post(
+    Uri.parse('$base/api/client/devices/$deviceId/rename'),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $proof',
+    },
+    body: jsonEncode({'name': name}),
+    rust: true,
+  );
+  if (response.statusCode != 200) {
+    throw Exception('rename returned HTTP ${response.statusCode}');
+  }
+}

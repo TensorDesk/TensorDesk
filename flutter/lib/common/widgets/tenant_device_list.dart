@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
+import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/tenant_devices_model.dart';
@@ -196,32 +197,66 @@ class _TenantDeviceListState extends State<TenantDeviceList> {
       tenantPeerPlatform(device.platform),
       size: 20,
     );
-    return ListTile(
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      onTap: () => openTenantDeviceSession(context, device.rustdeskId),
-      contentPadding: widget.compact
-          ? const EdgeInsets.symmetric(horizontal: 4, vertical: 0)
-          : null,
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Tooltip(
-            message: translate(device.online ? 'Online' : 'Offline'),
-            child: CircleAvatar(
-              radius: 3,
-              backgroundColor: device.online ? Colors.green : kColorWarn,
-            ).marginOnly(right: 6),
-          ),
-          platformImage,
-        ],
-      ),
-      title: Text(label, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        formatID(device.rustdeskId),
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 11),
+    return GestureDetector(
+      onSecondaryTapUp: (details) =>
+          _showDeviceMenu(context, device, details.globalPosition),
+      onLongPressStart: (details) =>
+          _showDeviceMenu(context, device, details.globalPosition),
+      child: ListTile(
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        onTap: () => openTenantDeviceSession(context, device.rustdeskId),
+        contentPadding: widget.compact
+            ? const EdgeInsets.symmetric(horizontal: 4, vertical: 0)
+            : null,
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Tooltip(
+              message: translate(device.online ? 'Online' : 'Offline'),
+              child: CircleAvatar(
+                radius: 3,
+                backgroundColor: device.online ? Colors.green : kColorWarn,
+              ).marginOnly(right: 6),
+            ),
+            platformImage,
+          ],
+        ),
+        title: Text(label, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          formatID(device.rustdeskId),
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11),
+        ),
       ),
     );
+  }
+
+  void _showDeviceMenu(
+      BuildContext context, TenantDevice device, Offset position) async {
+    final value = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+          position.dx, position.dy, position.dx, position.dy),
+      items: [
+        PopupMenuItem(value: 'rename', child: Text(translate('Rename'))),
+      ],
+    );
+    if (value == 'rename' && mounted) {
+      renameDialog(
+        oldName: device.name,
+        validator: (value) => (value == null || value.trim().isEmpty)
+            ? translate('Can not be empty')
+            : null,
+        onSubmit: (name) async {
+          try {
+            await renameTenantDevice(device.deviceId, name);
+            _load();
+          } catch (e) {
+            showToast(e.toString());
+          }
+        },
+      );
+    }
   }
 }
