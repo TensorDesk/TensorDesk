@@ -3697,6 +3697,7 @@ Future<TenantActivationResult> activateTenant(String token) async {
         'Accept': 'application/json',
         'Authorization': 'Bearer $token',
       },
+      rust: true,
     );
     if (response.statusCode != 200) {
       return TenantActivationResult(false, responseMessage(response));
@@ -3722,6 +3723,7 @@ Future<TenantActivationResult> activateTenant(String token) async {
         'uuid': await bind.mainGetUuid(),
         'pk': await bind.mainGetPk(),
       }),
+      rust: true,
     );
     if (enrollResponse.statusCode != 200) {
       return TenantActivationResult(false, responseMessage(enrollResponse));
@@ -3745,7 +3747,13 @@ Future<TenantActivationResult> activateTenant(String token) async {
     }
     return const TenantActivationResult(true, '');
   } catch (e) {
-    return TenantActivationResult(false, e.toString());
+    final message = e.toString();
+    if (e is TimeoutException ||
+        message.contains('timed out') ||
+        message.contains('TimedOut')) {
+      return TenantActivationResult(false, translate('Network error'));
+    }
+    return TenantActivationResult(false, message);
   }
 }
 

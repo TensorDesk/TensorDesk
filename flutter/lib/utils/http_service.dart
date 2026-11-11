@@ -14,12 +14,15 @@ class HttpService {
     HttpMethod method, {
     Map<String, String>? headers,
     dynamic body,
+    // Force the Rust implementation on non-web platforms; it has TLS
+    // fallback and TCP-proxy fallback, the Dart client has neither.
+    bool rust = false,
   }) async {
     headers ??= {'Content-Type': 'application/json'};
 
     // Use Rust HTTP implementation for non-web platforms for consistency.
     var useFlutterHttp = (isWeb || kIsWeb);
-    if (!useFlutterHttp) {
+    if (!useFlutterHttp && !rust) {
       final enableFlutterHttpOnRust =
           mainGetLocalBoolOptionSync(kOptionEnableFlutterHttpOnRust);
       // Use flutter http if:
@@ -122,14 +125,19 @@ class HttpService {
   }
 }
 
-Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
-  return await HttpService().sendRequest(url, HttpMethod.get, headers: headers);
+Future<http.Response> get(Uri url,
+    {Map<String, String>? headers, bool rust = false}) async {
+  return await HttpService()
+      .sendRequest(url, HttpMethod.get, headers: headers, rust: rust);
 }
 
 Future<http.Response> post(Uri url,
-    {Map<String, String>? headers, Object? body, Encoding? encoding}) async {
-  return await HttpService()
-      .sendRequest(url, HttpMethod.post, body: body, headers: headers);
+    {Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+    bool rust = false}) async {
+  return await HttpService().sendRequest(url, HttpMethod.post,
+      body: body, headers: headers, rust: rust);
 }
 
 Future<http.Response> put(Uri url,

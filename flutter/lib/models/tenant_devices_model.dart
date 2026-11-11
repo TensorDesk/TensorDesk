@@ -71,6 +71,7 @@ Future<List<TenantDevice>> fetchTenantDevices() async {
       'Accept': 'application/json',
       'Authorization': 'Bearer $proof',
     },
+    rust: true,
   );
   if (response.statusCode != 200) {
     throw Exception('device list returned HTTP ${response.statusCode}');
