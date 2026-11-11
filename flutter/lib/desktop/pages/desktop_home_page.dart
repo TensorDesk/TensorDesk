@@ -80,6 +80,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildLeftPane(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
     final isOutgoingOnly = bind.isOutgoingOnly();
+    if (bind.isCustomClient() && !isIncomingOnly && !isOutgoingOnly) {
+      return buildTenantLeftPane(context);
+    }
     final children = <Widget>[
       if (!isOutgoingOnly) buildPresetPasswordWarning(),
       if (bind.isCustomClient())
@@ -177,6 +180,273 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               )
           ],
         ),
+      ),
+    );
+  }
+
+  /// Branded left pane for managed (TensorDesk) builds: deep-teal gradient,
+  /// card-style ID/password boards, the workspace device list, and links to
+  /// the TensorDesk site/console pinned at the bottom. The generic pane above
+  /// stays unchanged for non-managed, incoming-only and outgoing-only builds.
+  Widget buildTenantLeftPane(BuildContext context) {
+    // The pane is dark regardless of the app theme, so give the whole subtree
+    // a dark theme for the device list and boards to pick up light text.
+    final dark = ThemeData.dark();
+    return ChangeNotifierProvider.value(
+      value: gFFI.serverModel,
+      child: Container(
+        width: 200.0,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0E7490), Color(0xFF164E63)],
+          ),
+        ),
+        child: Theme(
+          data: dark.copyWith(
+            textTheme: dark.textTheme
+                .apply(bodyColor: Colors.white, displayColor: Colors.white),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _leftPaneScrollController,
+                  child: Column(
+                    children: [
+                      buildPresetPasswordWarning(),
+                      _buildTenantBrandHeader(context),
+                      _buildTenantIdBoard(context),
+                      _buildTenantPasswordBoard(context),
+                      Container(
+                        margin:
+                            const EdgeInsets.only(left: 12, right: 12, top: 12),
+                        child: const TenantDeviceList(
+                            compact: true, showActivation: true),
+                      ),
+                      Obx(() => buildHelpCards(stateGlobal.updateUrl.value)),
+                    ],
+                  ),
+                ),
+              ),
+              _buildTenantLinks(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTenantBrandHeader(BuildContext context) {
+    const accent = Color(0xFF22D3EE);
+    return Padding(
+      padding: const EdgeInsets.only(top: 20, bottom: 4),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Tensor',
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          Text(
+            'Desk',
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold, color: accent),
+          ),
+        ],
+      ),
+    );
+  }
+
+  BoxDecoration _tenantCardDecoration() {
+    return BoxDecoration(
+      color: Colors.white.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.white24),
+    );
+  }
+
+  Widget _buildTenantIdBoard(BuildContext context) {
+    final model = gFFI.serverModel;
+    return Container(
+      margin: const EdgeInsets.only(left: 12, right: 12, top: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: _tenantCardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                translate("ID"),
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+              _buildTenantSettingsButton(context),
+            ],
+          ),
+          GestureDetector(
+            onDoubleTap: () {
+              Clipboard.setData(ClipboardData(text: model.serverId.text));
+              showToast(translate("Copied"));
+            },
+            child: TextFormField(
+              controller: model.serverId,
+              readOnly: true,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.only(top: 4, bottom: 4),
+                isDense: true,
+              ),
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white),
+            ).workaroundFreezeLinuxMint(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTenantSettingsButton(BuildContext context) {
+    final RxBool hover = false.obs;
+    return InkWell(
+      onTap: DesktopTabPage.onAddSetting,
+      child: Tooltip(
+        message: translate('Settings'),
+        child: Obx(
+          () => Icon(
+            Icons.more_vert_outlined,
+            size: 18,
+            color: hover.value ? Colors.white : Colors.white54,
+          ),
+        ),
+      ),
+      onHover: (value) => hover.value = value,
+    );
+  }
+
+  Widget _buildTenantPasswordBoard(BuildContext context) {
+    return Consumer<ServerModel>(
+      builder: (context, model, child) {
+        final RxBool refreshHover = false.obs;
+        final RxBool editHover = false.obs;
+        final showOneTime = model.approveMode != 'click' &&
+            model.verificationMethod != kUsePermanentPassword;
+        return Container(
+          margin: const EdgeInsets.only(left: 12, right: 12, top: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: _tenantCardDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                translate("One-time Password"),
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onDoubleTap: () {
+                        if (showOneTime) {
+                          Clipboard.setData(
+                              ClipboardData(text: model.serverPasswd.text));
+                          showToast(translate("Copied"));
+                        }
+                      },
+                      child: TextFormField(
+                        controller: model.serverPasswd,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.only(top: 8, bottom: 4),
+                          isDense: true,
+                        ),
+                        style:
+                            const TextStyle(fontSize: 15, color: Colors.white),
+                      ).workaroundFreezeLinuxMint(),
+                    ),
+                  ),
+                  if (showOneTime)
+                    AnimatedRotationWidget(
+                      onPressed: () => bind.mainUpdateTemporaryPassword(),
+                      child: Tooltip(
+                        message: translate('Refresh Password'),
+                        child: Obx(() => RotatedBox(
+                            quarterTurns: 2,
+                            child: Icon(
+                              Icons.refresh,
+                              color: refreshHover.value
+                                  ? Colors.white
+                                  : Colors.white54,
+                              size: 20,
+                            ))),
+                      ),
+                      onHover: (value) => refreshHover.value = value,
+                    ).marginOnly(right: 8, top: 4),
+                  if (!bind.isDisableSettings())
+                    InkWell(
+                      child: Tooltip(
+                        message: translate('Change Password'),
+                        child: Obx(
+                          () => Icon(
+                            Icons.edit,
+                            color:
+                                editHover.value ? Colors.white : Colors.white54,
+                            size: 20,
+                          ).marginOnly(right: 4, top: 4),
+                        ),
+                      ),
+                      onTap: () =>
+                          DesktopSettingPage.switch2page(SettingsTabKey.safety),
+                      onHover: (value) => editHover.value = value,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTenantLinks(BuildContext context) {
+    Widget link(String url) {
+      return InkWell(
+        onTap: () => launchUrl(Uri.parse(url)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.open_in_new, size: 11, color: Colors.white54),
+              const SizedBox(width: 4),
+              Text(
+                url.replaceFirst('https://', ''),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.white70,
+                  decoration: TextDecoration.underline,
+                  decorationColor: Colors.white54,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 10),
+      child: Column(
+        children: [
+          link('https://tensordesk.org'),
+          link('https://console.tensordesk.org'),
+        ],
       ),
     );
   }
