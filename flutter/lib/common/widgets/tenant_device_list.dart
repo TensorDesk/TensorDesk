@@ -125,7 +125,7 @@ class _TenantDeviceListState extends State<TenantDeviceList> {
       children: [
         Expanded(
           child: Text(
-            translate('Devices'),
+            translate('Desktops'),
             style: Theme.of(context).textTheme.titleSmall,
           ),
         ),
@@ -193,10 +193,6 @@ class _TenantDeviceListState extends State<TenantDeviceList> {
   Widget _buildDevice(BuildContext context, TenantDevice device) {
     final label =
         device.name.isEmpty ? formatID(device.rustdeskId) : device.name;
-    final platformImage = getPlatformImage(
-      tenantPeerPlatform(device.platform),
-      size: 20,
-    );
     return GestureDetector(
       onSecondaryTapUp: (details) =>
           _showDeviceMenu(context, device, details.globalPosition),
@@ -219,7 +215,19 @@ class _TenantDeviceListState extends State<TenantDeviceList> {
                 backgroundColor: device.online ? Colors.green : kColorWarn,
               ).marginOnly(right: 6),
             ),
-            platformImage,
+            Container(
+              width: 22,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: str2color('${device.rustdeskId}${device.platform}', 0x7f),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: getPlatformImage(
+                tenantPeerPlatform(device.platform),
+                size: 16,
+              ),
+            ),
           ],
         ),
         title: Text(label, overflow: TextOverflow.ellipsis),

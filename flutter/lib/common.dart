@@ -34,6 +34,7 @@ import 'mobile/pages/file_manager_page.dart';
 import 'mobile/pages/remote_page.dart';
 import 'mobile/pages/view_camera_page.dart';
 import 'mobile/pages/terminal_page.dart';
+import 'mobile/widgets/dialog.dart';
 import 'desktop/pages/remote_page.dart' as desktop_remote;
 import 'desktop/pages/file_manager_page.dart' as desktop_file_manager;
 import 'desktop/pages/view_camera_page.dart' as desktop_view_camera;
@@ -2456,9 +2457,18 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
   } else if (uri.authority == "activate") {
     final code = uri.queryParameters['code'] ??
         (uri.path.length > 1 ? uri.path.substring(1) : '');
+    final username =
+        (uri.queryParameters['user'] ?? uri.queryParameters['username'] ?? '')
+            .trim();
     if (code.isNotEmpty) {
       Timer(Duration(seconds: 1), () async {
-        final result = await activateTenant(code);
+        if (username.isEmpty) {
+          // The account email is required, so ask for it on the activation page.
+          showActivationDialog(gFFI.dialogManager, () {},
+              initialCode: code);
+          return;
+        }
+        final result = await activateTenant(code, username: username);
         showToast(translate(result.ok ? 'Successful' : 'Failed'));
       });
     }
@@ -3668,8 +3678,13 @@ class TenantActivationResult {
 /// The one-time code (td1_) is first exchanged for the long-lived device
 /// credential (tdk_) at /api/client/enroll; the tdk_ is what gets stored as
 /// tenant-proof and used for every later control-plane call.
-Future<TenantActivationResult> activateTenant(String token) async {
+Future<TenantActivationResult> activateTenant(String token,
+    {required String username}) async {
   token = token.trim();
+  username = username.trim();
+  if (username.isEmpty) {
+    return const TenantActivationResult(false, 'account email is required');
+  }
   if (token.isEmpty) {
     return const TenantActivationResult(false, 'activation code is empty');
   }
@@ -3722,6 +3737,7 @@ Future<TenantActivationResult> activateTenant(String token) async {
         'id': await bind.mainGetMyId(),
         'uuid': await bind.mainGetUuid(),
         'pk': await bind.mainGetPk(),
+        'username': username,
       }),
       rust: true,
     );
@@ -3737,6 +3753,7 @@ Future<TenantActivationResult> activateTenant(String token) async {
     // the service restart the rendezvous mediator immediately.
     await bind.mainSetOption(key: 'tenant-id', value: tenantId);
     await bind.mainSetOption(key: 'tenant-proof', value: credential);
+    await bind.mainSetOption(key: 'tenant-username', value: username);
     final ok = await setServerConfig(
         null,
         null,
@@ -3853,7 +3870,7 @@ Widget loadPowered(BuildContext context) {
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
       onTap: () {
-        launchUrl(Uri.parse('https://rustdesk.com'));
+        launchUrl(Uri.parse('https://tensordesk.org'));
       },
       child: Opacity(
           opacity: 0.5,

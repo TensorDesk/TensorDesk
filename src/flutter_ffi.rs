@@ -1031,11 +1031,16 @@ pub fn main_get_http_status(url: String) -> Option<String> {
 }
 
 pub fn main_get_option(key: String) -> String {
-    get_option(key)
+    let value = get_option(&key);
+    if value.is_empty() {
+        crate::get_builtin_option(&key)
+    } else {
+        value
+    }
 }
 
 pub fn main_get_option_sync(key: String) -> SyncReturn<String> {
-    SyncReturn(get_option(key))
+    SyncReturn(main_get_option(key))
 }
 
 pub fn main_get_error() -> String {

@@ -61,13 +61,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget build(BuildContext context) {
     super.build(context);
     final isIncomingOnly = bind.isIncomingOnly();
+    final isOutgoingOnly = bind.isOutgoingOnly();
+    final isManagedClient = bind.isCustomClient();
+    final showGenericRight =
+        !isManagedClient && !isIncomingOnly && !isOutgoingOnly;
     return _buildBlock(
         child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         buildLeftPane(context),
         if (!isIncomingOnly) const VerticalDivider(width: 1),
-        if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
+        if (!isIncomingOnly) Expanded(child: buildRightPane(context, showGenericRight)),
       ],
     ));
   }
@@ -218,13 +222,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                       buildPresetPasswordWarning(),
                       _buildTenantBrandHeader(context),
                       _buildTenantIdBoard(context),
-                      _buildTenantPasswordBoard(context),
-                      Container(
-                        margin:
-                            const EdgeInsets.only(left: 12, right: 12, top: 12),
-                        child: const TenantDeviceList(
-                            compact: true, showActivation: true),
-                      ),
                       Obx(() => buildHelpCards(stateGlobal.updateUrl.value)),
                     ],
                   ),
@@ -329,91 +326,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
-  Widget _buildTenantPasswordBoard(BuildContext context) {
-    return Consumer<ServerModel>(
-      builder: (context, model, child) {
-        final RxBool refreshHover = false.obs;
-        final RxBool editHover = false.obs;
-        final showOneTime = model.approveMode != 'click' &&
-            model.verificationMethod != kUsePermanentPassword;
-        return Container(
-          margin: const EdgeInsets.only(left: 12, right: 12, top: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: _tenantCardDecoration(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                translate("One-time Password"),
-                style: const TextStyle(fontSize: 12, color: Colors.white70),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onDoubleTap: () {
-                        if (showOneTime) {
-                          Clipboard.setData(
-                              ClipboardData(text: model.serverPasswd.text));
-                          showToast(translate("Copied"));
-                        }
-                      },
-                      child: TextFormField(
-                        controller: model.serverPasswd,
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.only(top: 8, bottom: 4),
-                          isDense: true,
-                        ),
-                        style:
-                            const TextStyle(fontSize: 15, color: Colors.white),
-                      ).workaroundFreezeLinuxMint(),
-                    ),
-                  ),
-                  if (showOneTime)
-                    AnimatedRotationWidget(
-                      onPressed: () => bind.mainUpdateTemporaryPassword(),
-                      child: Tooltip(
-                        message: translate('Refresh Password'),
-                        child: Obx(() => RotatedBox(
-                            quarterTurns: 2,
-                            child: Icon(
-                              Icons.refresh,
-                              color: refreshHover.value
-                                  ? Colors.white
-                                  : Colors.white54,
-                              size: 20,
-                            ))),
-                      ),
-                      onHover: (value) => refreshHover.value = value,
-                    ).marginOnly(right: 8, top: 4),
-                  if (!bind.isDisableSettings())
-                    InkWell(
-                      child: Tooltip(
-                        message: translate('Change Password'),
-                        child: Obx(
-                          () => Icon(
-                            Icons.edit,
-                            color:
-                                editHover.value ? Colors.white : Colors.white54,
-                            size: 20,
-                          ).marginOnly(right: 4, top: 4),
-                        ),
-                      ),
-                      onTap: () =>
-                          DesktopSettingPage.switch2page(SettingsTabKey.safety),
-                      onHover: (value) => editHover.value = value,
-                    ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildTenantLinks(BuildContext context) {
     Widget link(String url) {
       return InkWell(
@@ -451,7 +363,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
-  buildRightPane(BuildContext context) {
+  buildRightPane(BuildContext context, bool showGenericRight) {
+    if (bind.isCustomClient() && !bind.isIncomingOnly() && !bind.isOutgoingOnly()) {
+      // Branded TensorDesk build: the workspace device list lives on the
+      // right pane. We pass `showActivation = true` so an unactivated build
+      // still surfaces the activation entry rather than an empty right side.
+      return Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: TenantDeviceList(
+          compact: false,
+          showActivation: true,
+        ),
+      );
+    }
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ConnectionPage(),
@@ -715,7 +639,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse('https://rustdesk.com/download');
+        final Uri url =
+            Uri.parse('https://github.com/TensorDesk/TensorDesk/releases');
         await launchUrl(url);
       };
       if (isToUpdate) {
@@ -811,8 +736,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             () async {},
             marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
-            link:
-                'https://rustdesk.com/docs/en/client/linux/#permissions-issue',
+            link: 'https://tensordesk.org/docs',
             closeButton: true,
             closeOption: keyShowSelinuxHelpTip,
           ));
@@ -823,13 +747,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             "Warning", "wayland_experiment_tip", "", () async {},
             marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
-            link: 'https://rustdesk.com/docs/en/client/linux/#x11-required'));
+            link: 'https://tensordesk.org/docs'));
       } else if (bind.mainIsLoginWayland()) {
         LinuxCards.add(buildInstallCard("Warning",
             "Login screen using Wayland is not supported", "", () async {},
             marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
-            link: 'https://rustdesk.com/docs/en/client/linux/#login-screen'));
+            link: 'https://tensordesk.org/docs'));
       }
       if (LinuxCards.isNotEmpty) {
         return Column(

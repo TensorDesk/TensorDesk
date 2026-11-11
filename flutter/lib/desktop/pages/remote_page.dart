@@ -1440,10 +1440,18 @@ class _ImagePaintState extends State<ImagePaint> {
         ));
       }
     }
-    return SizedBox(
-      width: size.width,
-      height: size.height,
-      child: Stack(children: children),
+    // Let the Stack know the total paint area so FittedBox can scale it
+    // proportionally to whatever parent constraints arrive.
+    final remotePaintSize =
+        Size(c.getDisplayWidth() * s, c.getDisplayHeight() * s);
+    return FittedBox(
+      fit: BoxFit.contain,
+      alignment: Alignment.topLeft,
+      child: SizedBox(
+        width: remotePaintSize.width,
+        height: remotePaintSize.height,
+        child: Stack(children: children),
+      ),
     );
   }
 

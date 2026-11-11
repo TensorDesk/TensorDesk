@@ -929,7 +929,13 @@ class FfiModel with ChangeNotifier {
     } else if (type == 'input-2fa') {
       enter2FaDialog(sessionId, dialogManager);
     } else if (type == 'input-password') {
-      enterPasswordDialog(sessionId, dialogManager);
+      final forceOs = bind.mainGetOptionSync(key: kOptionForceOsAuth) == 'Y';
+      if (forceOs) {
+        enterUserLoginAndPasswordDialog(
+            sessionId, dialogManager, 'remote-os-auth-tip');
+      } else {
+        enterPasswordDialog(sessionId, dialogManager);
+      }
     } else if (type == 'terminal-admin-login') {
       enterUserLoginDialog(
           sessionId, dialogManager, 'terminal-admin-login-tip');

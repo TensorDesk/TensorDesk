@@ -77,6 +77,116 @@ pub type Sender = mpsc::UnboundedSender<(Instant, Arc<Message>)>;
 
 mod trusted_devices;
 
+#[cfg(target_os = "linux")]
+fn verify_os_password(username: &str, password: &str) -> bool {
+    use libc;
+    use std::ffi::CString;
+    use std::ptr;
+
+    #[link(name = "pam")]
+    extern "C" {
+        fn pam_start(
+            service: *const libc::c_char,
+            user: *const libc::c_char,
+            conv: *mut libc::c_void,
+            pamh: *mut *mut libc::c_void,
+        ) -> libc::c_int;
+        fn pam_authenticate(pamh: *mut libc::c_void, flags: libc::c_int) -> libc::c_int;
+        fn pam_acct_mgmt(pamh: *mut libc::c_void, flags: libc::c_int) -> libc::c_int;
+        fn pam_end(pamh: *mut libc::c_void, status: libc::c_int) -> libc::c_int;
+    }
+
+    let service = match CString::new("login") {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    let user = match CString::new(username) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    let pw = match CString::new(password) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+
+    // Linux-PAM conversation: pam_conv -> conv function + appdata pointer
+    #[repr(C)]
+    struct PamConv {
+        prompt: unsafe extern "C" fn(
+            libc::c_int,
+            *mut *mut libc::c_void,
+            *mut *mut libc::c_void,
+            *mut libc::c_void,
+        ) -> libc::c_int,
+        appdata_ptr: *mut libc::c_void,
+    }
+
+    unsafe extern "C" fn pam_conv_cb(
+        num_msg: libc::c_int,
+        msg: *mut *mut libc::c_void,
+        resp_out: *mut *mut libc::c_void,
+        appdata: *mut libc::c_void,
+    ) -> libc::c_int {
+        use libc::{malloc, strdup};
+        if num_msg <= 0 || msg.is_null() {
+            return 0;
+        }
+        let pw_c = appdata as *const libc::c_char;
+        for i in 0..num_msg {
+            let m = *(msg as *mut *mut libc::c_void).add(i as usize);
+            if m.is_null() {
+                continue;
+            }
+            let typ = *(m as *const libc::c_int);
+            if typ == 2 {
+                // PAM_PROMPT_ECHO_OFF
+                let dup = strdup(pw_c);
+                if dup.is_null() {
+                    return 4;
+                } // PAM_BUF_ERR
+                let resp_ptr =
+                    malloc(std::mem::size_of::<*mut libc::c_void>() * 2) as *mut libc::c_void;
+                if resp_ptr.is_null() {
+                    return 4;
+                }
+                (*(resp_ptr as *mut *mut libc::c_char)) = dup as *mut libc::c_char;
+                *(resp_ptr as *mut libc::c_int).add(1) = 0;
+                *(resp_out as *mut *mut libc::c_void) = resp_ptr;
+                return 0;
+            }
+        }
+        *(resp_out as *mut *mut libc::c_void) = ptr::null_mut();
+        0
+    }
+
+    let mut pamh: *mut libc::c_void = ptr::null_mut();
+    let mut conv_struct = PamConv {
+        prompt: pam_conv_cb,
+        appdata_ptr: pw.as_ptr() as *mut libc::c_void,
+    };
+
+    unsafe {
+        let rc = pam_start(
+            service.as_ptr(),
+            user.as_ptr(),
+            &mut conv_struct as *mut _ as *mut libc::c_void,
+            &mut pamh,
+        );
+        if rc != 0 {
+            return false;
+        }
+        let rc = pam_authenticate(pamh, 0);
+        let acct = if rc == 0 { pam_acct_mgmt(pamh, 0) } else { 1 };
+        pam_end(pamh, if rc == 0 { acct } else { rc });
+        rc == 0 && acct == 0
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn verify_os_password(_username: &str, _password: &str) -> bool {
+    false
+}
+
 const FAILURE_IDX_ID_WHITELIST: usize = 2;
 // How long a rejection counts, so also how long a blocked address stays blocked. Longer
 // throttles enumeration harder; shorter limits collateral on whitelisted neighbours.
@@ -315,6 +425,7 @@ enum ConnAuditPrimaryAuth {
     TemporaryPassword = 2,
     PermanentPassword = 3,
     SwitchSides = 4,
+    OsUserPassword = 5,
 }
 
 impl ConnAuditPrimaryAuth {
@@ -1695,12 +1806,18 @@ impl Connection {
         const RETRY_BACKOFF_SECS: [u64; 2] = [10, 30];
         const ATTEMPTS: usize = RETRY_BACKOFF_SECS.len() + 1;
         let body = v.to_string();
+        let proof = String::from_utf8_lossy(&crate::common::tenant_proof()).to_string();
+        let header = if proof.is_empty() {
+            String::new()
+        } else {
+            format!("Authorization: Bearer {proof}")
+        };
         let started = Instant::now();
         let mut attempt = 0usize;
         loop {
             attempt += 1;
             let (retryable, err) =
-                match crate::post_request_with_status(url.clone(), body.clone(), "").await {
+                match crate::post_request_with_status(url.clone(), body.clone(), &header).await {
                     Ok((status, text)) => {
                         if (200..300).contains(&status) {
                             // Success is an empty body. hbbs reports handler
@@ -2622,7 +2739,22 @@ impl Connection {
         state.failures = 0;
     }
 
-    fn validate_password(&mut self, allow_permanent_password: bool) -> bool {
+    async fn validate_password(&mut self, allow_permanent_password: bool) -> bool {
+        let force_os_auth =
+            crate::get_builtin_option(keys::OPTION_FORCE_OS_AUTH) == "Y";
+        if force_os_auth {
+            let username = self.lr.os_login.username.clone();
+            let password = self.lr.os_login.password.clone();
+            if !username.is_empty() && !password.is_empty() {
+                let ok = tokio::task::spawn_blocking(move || verify_os_password(&username, &password))
+                    .await
+                    .unwrap_or(false);
+                if ok {
+                    self.set_conn_audit_primary_auth(ConnAuditPrimaryAuth::OsUserPassword);
+                    return true;
+                }
+            }
+        }
         if password::temporary_enabled() {
             let password = password::temporary_password();
             if self.validate_password_plain(&password) {
@@ -3043,9 +3175,13 @@ impl Connection {
             let allow_logon_screen_password =
                 crate::get_builtin_option(keys::OPTION_ALLOW_LOGON_SCREEN_PASSWORD) == "Y"
                     && is_logon();
+            let force_os_auth = crate::get_builtin_option(keys::OPTION_FORCE_OS_AUTH) == "Y";
 
-            if (password::approve_mode() == ApproveMode::Click && !allow_logon_screen_password)
-                || password::approve_mode() == ApproveMode::Both && !password::has_valid_password()
+            if !force_os_auth
+                && ((password::approve_mode() == ApproveMode::Click
+                    && !allow_logon_screen_password)
+                    || password::approve_mode() == ApproveMode::Both
+                        && !password::has_valid_password())
             {
                 #[cfg(not(any(target_os = "android", target_os = "ios")))]
                 if should_use_terminal_os_login_scope(self.terminal, &lr.os_login.username) {
@@ -3067,7 +3203,7 @@ impl Connection {
                     return false;
                 }
                 self.try_start_cm(lr.my_id.clone(), lr.my_name.clone(), self.authorized);
-            } else if lr.password.is_empty() {
+            } else if !force_os_auth && lr.password.is_empty() {
                 #[cfg(not(any(target_os = "android", target_os = "ios")))]
                 if should_use_terminal_os_login_scope(self.terminal, &lr.os_login.username) {
                     if let Some(keep_alive) = self.prepare_terminal_login_for_authorization().await
@@ -3081,7 +3217,7 @@ impl Connection {
                 if !res {
                     return true;
                 }
-                if !self.validate_password(allow_logon_screen_password) {
+                if !self.validate_password(allow_logon_screen_password).await {
                     self.update_failure_with_scope(failure, false, 0, FailureScope::Default);
                     self.check_update_temporary_password(false);
                     self.send_login_error(crate::client::LOGIN_MSG_PASSWORD_WRONG)

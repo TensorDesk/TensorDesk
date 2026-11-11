@@ -222,16 +222,29 @@ void showServerSettingsWithValue(
 }
 
 void showActivationDialog(OverlayDialogManager dialogManager,
-    VoidCallback onActivated) {
+    VoidCallback onActivated,
+    {String initialCode = '', String initialUsername = ''}) {
   var isInProgress = false;
-  var code = '';
+  final codeController = TextEditingController(text: initialCode);
+  final usernameController = TextEditingController(text: initialUsername);
+  var error = '';
   dialogManager.show((setState, close, context) {
     Future<void> submit() async {
-      if (code.trim().isEmpty) return;
+      final username = usernameController.text.trim();
+      final code = codeController.text.trim();
+      if (username.isEmpty) {
+        setState(() => error = translate('Account email is required'));
+        return;
+      }
+      if (code.isEmpty) {
+        setState(() => error = translate('Activation code is required'));
+        return;
+      }
       setState(() {
         isInProgress = true;
+        error = '';
       });
-      final result = await activateTenant(code);
+      final result = await activateTenant(code, username: username);
       setState(() {
         isInProgress = false;
       });
@@ -240,6 +253,8 @@ void showActivationDialog(OverlayDialogManager dialogManager,
         onActivated.call();
         showToast(translate('Successful'));
       } else {
+        // Stay on the activation page so the account email can be corrected.
+        setState(() => error = result.message);
         showToast('${translate('Failed')}: ${result.message}');
       }
     }
@@ -252,17 +267,35 @@ void showActivationDialog(OverlayDialogManager dialogManager,
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(translate('Enter the activation code from the console')),
+            Text(translate('Enter the account email and activation code')),
             const SizedBox(height: 12),
             TextField(
+              controller: usernameController,
               autofocus: true,
+              decoration: InputDecoration(
+                labelText: translate('Account email'),
+                border: const OutlineInputBorder(),
+                hintText: translate('The email you use to sign in to the console'),
+              ),
+              onSubmitted: (_) => submit(),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: codeController,
               decoration: InputDecoration(
                 labelText: translate('Activation code'),
                 border: const OutlineInputBorder(),
               ),
-              onChanged: (value) => code = value,
               onSubmitted: (_) => submit(),
             ),
+            if (error.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  error,
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+              ),
             if (isInProgress)
               const Padding(
                 padding: EdgeInsets.only(top: 8),

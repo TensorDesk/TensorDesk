@@ -20,6 +20,7 @@ import 'package:flutter_hbb/models/printer_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
 import 'package:flutter_hbb/models/shortcut_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
+import 'package:flutter_hbb/models/tenant_devices_model.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -55,6 +56,7 @@ enum SettingsTabKey {
   general,
   safety,
   network,
+  subscription,
   display,
   account,
   printer,
@@ -74,6 +76,7 @@ class DesktopSettingPage extends StatefulWidget {
     if (!bind.isDisableSettings() &&
         bind.mainGetBuildinOption(key: kOptionHideNetworkSetting) != 'Y')
       SettingsTabKey.network,
+    if (bind.isCustomClient()) SettingsTabKey.subscription,
     if (!bind.isIncomingOnly()) SettingsTabKey.display,
     if (!bind.isDisableAccount()) SettingsTabKey.account,
     if (isWindows &&
@@ -199,6 +202,11 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
           settingTabs
               .add(_TabInfo(tab, 'Network', Icons.link_outlined, Icons.link));
           break;
+        case SettingsTabKey.subscription:
+          settingTabs.add(_TabInfo(
+              tab, 'Subscription', Icons.card_membership_outlined,
+              Icons.card_membership));
+          break;
         case SettingsTabKey.display:
           settingTabs.add(_TabInfo(tab, 'Display',
               Icons.desktop_windows_outlined, Icons.desktop_windows));
@@ -232,6 +240,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
           break;
         case SettingsTabKey.network:
           children.add(const _Network());
+          break;
+        case SettingsTabKey.subscription:
+          children.add(const _Subscription());
           break;
         case SettingsTabKey.display:
           children.add(const _Display());
@@ -1338,6 +1349,20 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
   }
 
   Widget password(BuildContext context) {
+    if (bind.mainGetOptionSync(key: kOptionForceOsAuth).trim() == 'Y') {
+      return _Card(title: 'Password', children: [
+        Padding(
+          padding: const EdgeInsets.only(
+              left: _kContentHMargin, right: _kContentHMargin, bottom: 8),
+          child: Text(
+            'System authentication is enabled. Connecting devices must sign in '
+            'with a valid OS username and password for this machine. '
+            'One-time and permanent passwords are disabled.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ]);
+    }
     return ChangeNotifierProvider.value(
         value: gFFI.serverModel,
         child: Consumer<ServerModel>(builder: ((context, model, child) {
@@ -1970,14 +1995,6 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
             children: [
               if (!isWeb)
                 listTile(
-                  icon: Icons.vpn_key_outlined,
-                  title: 'Activate TensorDesk',
-                  onTap: () => showActivationDialog(
-                      gFFI.dialogManager, () => setState(() {})),
-                ),
-              if (!isWeb) divider,
-              if (!hideServer)
-                listTile(
                   icon: Icons.dns_outlined,
                   title: 'ID/Relay Server',
                   onTap: () => showServerSettings(gFFI.dialogManager, setState),
@@ -2044,6 +2061,123 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _Subscription extends StatefulWidget {
+  const _Subscription({Key? key}) : super(key: key);
+
+  @override
+  State<_Subscription> createState() => _SubscriptionState();
+}
+
+class _SubscriptionState extends State<_Subscription> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final proof = bind.mainGetOptionSync(key: 'tenant-proof').trim();
+    final tenantId = bind.mainGetOptionSync(key: 'tenant-id').trim();
+    final isActivated = proof.isNotEmpty;
+
+    return SingleChildScrollView(
+      controller: _scrollController,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // —— Subscription status card ——
+          _Card(
+            title: 'Subscription',
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(
+                      isActivated ? Icons.verified : Icons.warning_amber_outlined,
+                      color: isActivated ? Colors.green : Colors.orange,
+                      size: 28,
+                    ).marginOnly(right: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isActivated
+                                ? translate('This device is activated.')
+                                : translate('This device is not activated yet.'),
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          if (isActivated && tenantId.isNotEmpty)
+                            Text(
+                              'Tenant: $tenantId',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ).marginOnly(top: 2),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.key_rounded),
+                label: Text(isActivated
+                    ? translate('Re-activate with a new code')
+                    : translate('Activate with a code')),
+                onPressed: () => showActivationDialog(
+                  gFFI.dialogManager,
+                  () => setState(() {}),
+                ),
+              ),
+              const Divider(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: GestureDetector(
+                  onTap: () => launchUrl(
+                    Uri.parse('https://console.tensordesk.org'),
+                  ),
+                  child: Text(
+                    'Manage your workspace at console.tensordesk.org →',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: MyTheme.accent,
+                          decoration: TextDecoration.underline,
+                        ),
+                  ),
+                ),
+              ),
+            ],
+          ).marginOnly(bottom: 12),
+
+          // —— Authentication card (host-side, applies when *this* device is the target) ——
+          _Card(
+            title: 'Authentication',
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 12, right: 12, bottom: 8),
+                child: Text(
+                  'All connections require the OS username and password of this machine. '
+                  'Share the one-time ID with the person you want to connect, and they will '
+                  'need a valid system account to sign in.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2330,87 +2464,124 @@ class _Account extends StatefulWidget {
 }
 
 class _AccountState extends State<_Account> {
+  Map<String, dynamic>? _subscription;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubscription();
+  }
+
+  Future<void> _loadSubscription() async {
+    try {
+      final data = await fetchTenantSubscription();
+      if (mounted) {
+        setState(() {
+          _subscription = data;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scrollController = ScrollController();
+    final email = bind.mainGetOptionSync(key: 'tenant-username').trim();
+    final activated =
+        bind.mainGetOptionSync(key: 'tenant-proof').trim().isNotEmpty;
     return ListView(
       controller: scrollController,
       children: [
-        _Card(title: 'Account', children: [accountAction(), useInfo()]),
+        _Card(title: 'Account', children: [
+          if (!activated)
+            Padding(
+              padding: const EdgeInsets.only(
+                  left: _kContentHMargin, right: _kContentHMargin, bottom: 8),
+              child: Text(
+                translate(
+                    'This device is not activated. Use Settings > Subscription to activate it.'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            )
+          else
+            accountInfo(context, email),
+        ]),
       ],
     ).marginOnly(bottom: _kListViewBottomMargin);
   }
 
-  Widget accountAction() {
-    return Obx(() => _Button(
-        gFFI.userModel.userName.value.isEmpty
-            ? 'Login'
-            : '${translate('Logout')} (${gFFI.userModel.accountLabelWithHandle})',
-        () => {
-              gFFI.userModel.userName.value.isEmpty
-                  ? loginDialog()
-                  : logOutConfirmDialog()
-            }));
-  }
+  Widget accountInfo(BuildContext context, String email) {
+    final subscription = _subscription;
+    final planName = (subscription?['plan_name'] ??
+            subscription?['plan'] ??
+            'Free')
+        .toString();
+    final expiresAt = DateTime.tryParse(
+        '${subscription?['expires_at'] ?? ''}')?.toLocal();
+    final expires = expiresAt == null
+        ? '—'
+        : expiresAt.toIso8601String().substring(0, 10);
+    final deviceLimit = subscription?['device_limit'];
+    final deviceCount = subscription?['device_count'];
 
-  Widget useInfo() {
-    return Obx(() => Offstage(
-          offstage: gFFI.userModel.userName.value.isEmpty,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Builder(builder: (context) {
-              final avatarWidget = _buildUserAvatar();
-              return Row(
-                children: [
-                  if (avatarWidget != null) avatarWidget,
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          gFFI.userModel.displayNameOrUserName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        SelectionArea(
-                          child: Text(
-                            '@${gFFI.userModel.userName.value}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color:
-                                  Theme.of(context).textTheme.bodySmall?.color,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }),
+    Widget row(String label, String value) => Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: _kContentHMargin, vertical: 4),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 140,
+                child: Text(label,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
+              Expanded(
+                child: SelectionArea(
+                  child: Text(value, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
           ),
-        )).marginOnly(left: 18, top: 16);
-  }
+        );
 
-  Widget? _buildUserAvatar() {
-    // Resolve relative avatar path at display time
-    final avatar =
-        bind.mainResolveAvatarUrl(avatar: gFFI.userModel.avatar.value);
-    return buildAvatarWidget(
-      avatar: avatar,
-      size: 44,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        row(translate('Account email'),
+            email.isEmpty ? translate('Unknown') : email),
+        row(translate('Plan'), planName),
+        row(translate('Expires'), expires),
+        if (deviceLimit != null)
+          row(translate('Devices'), '$deviceCount / $deviceLimit'),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(
+                left: _kContentHMargin, right: _kContentHMargin, top: 4),
+            child: Text(
+              '${translate('Failed to load subscription')}: $_error',
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(
+              left: _kContentHMargin, right: _kContentHMargin, top: 8),
+          child: Row(
+            children: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.open_in_new, size: 18),
+                label: Text(translate('Manage subscription / renew')),
+                onPressed: () => launchUrlString(
+                    'https://console.tensordesk.org/billing'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2668,7 +2839,7 @@ class _AboutState extends State<_About> {
                       .marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://rustdesk.com/privacy.html');
+                    launchUrlString('https://tensordesk.org/privacy');
                   },
                   child: Text(
                     translate('Privacy Statement'),
@@ -2676,7 +2847,7 @@ class _AboutState extends State<_About> {
                   ).marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://rustdesk.com');
+                    launchUrlString('https://tensordesk.org');
                   },
                   child: Text(
                     translate('Website'),
@@ -2694,7 +2865,7 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd.\n$license',
+                            'Copyright © 2026 TensorDesk Tech Ltd.\n$license',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(

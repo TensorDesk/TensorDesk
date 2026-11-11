@@ -80,10 +80,41 @@ Future<List<TenantDevice>> fetchTenantDevices() async {
   if (decoded is! List) {
     throw Exception('invalid device list response');
   }
+  // Filter out this device itself — a device cannot remotely connect to itself.
+  final myId = (await bind.mainGetMyId()).trim();
   return decoded
       .whereType<Map<String, dynamic>>()
       .map(TenantDevice.fromJson)
+      .where((device) => device.rustdeskId != myId)
       .toList();
+}
+
+/// Workspace plan and usage of the credential's workspace; `null` when this
+/// build has not been activated yet.
+Future<Map<String, dynamic>?> fetchTenantSubscription() async {
+  final proof = bind.mainGetOptionSync(key: 'tenant-proof').trim();
+  if (proof.isEmpty) {
+    return null;
+  }
+  final base = kTenantApiBase.endsWith('/')
+      ? kTenantApiBase.substring(0, kTenantApiBase.length - 1)
+      : kTenantApiBase;
+  final response = await http.get(
+    Uri.parse('$base/api/client/subscription'),
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $proof',
+    },
+    rust: true,
+  );
+  if (response.statusCode != 200) {
+    throw Exception('subscription returned HTTP ${response.statusCode}');
+  }
+  final decoded = jsonDecode(response.body);
+  if (decoded is! Map<String, dynamic>) {
+    throw Exception('invalid subscription response');
+  }
+  return decoded;
 }
 
 /// Renames a device of the credential's workspace; throws on HTTP error.

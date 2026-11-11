@@ -2695,10 +2695,13 @@ pub fn apply_managed_defaults() {
     if option_env!("TENSORDESK_HIDE_SERVER_SETTINGS").is_none() {
         return;
     }
-    config::BUILTIN_SETTINGS
-        .write()
-        .unwrap()
-        .entry(keys::OPTION_HIDE_SERVER_SETTINGS.to_owned())
+    let mut bs = config::BUILTIN_SETTINGS.write().unwrap();
+    bs.entry(keys::OPTION_HIDE_SERVER_SETTINGS.to_owned())
+        .or_insert_with(|| "Y".to_owned());
+    // Not a default: the UI no longer exposes this switch, so a stale "N"
+    // in an existing config would otherwise silently disable OS auth.
+    bs.insert(keys::OPTION_FORCE_OS_AUTH.to_owned(), "Y".to_owned());
+    bs.entry(keys::OPTION_ALLOW_LOGON_SCREEN_PASSWORD.to_owned())
         .or_insert_with(|| "Y".to_owned());
 }
 
