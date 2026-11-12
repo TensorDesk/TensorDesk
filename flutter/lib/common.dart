@@ -2079,9 +2079,10 @@ Future<bool> restoreWindowPosition(WindowType type,
             final scale = kIgnoreDpi ? 1.0 : screen.scaleFactor;
             final w = (frame.width / scale * 0.8).clamp(480.0, 1920.0);
             final h = (frame.height / scale * 0.75).clamp(320.0, 1200.0);
+            final x = frame.left / scale + (frame.width / scale - w) / 2;
+            final y = frame.top / scale + (frame.height / scale - h) / 2;
             final wc = WindowController.fromWindowId(windowId!);
-            await wc.setSize(Size(w, h),
-                ignoreDevicePixelRatio: _ignoreDevicePixelRatio);
+            await wc.setFrame(Rect.fromLTWH(x, y, w, h));
             await wc.center();
             debugPrint(
                 "Adaptive default size for $type: ${w.toStringAsFixed(0)}x${h.toStringAsFixed(0)}");
