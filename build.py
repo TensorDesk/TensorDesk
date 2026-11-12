@@ -972,6 +972,14 @@ def build_flutter_windows(version, features, skip_portable_pack):
         if not os.path.exists("target/release/librustdesk.dll"):
             print("cargo build failed, please check rust source code.")
             exit(-1)
+    # Copy the multi-size TensorDesk icon so the exe embeds the correct icon
+    # at every size the OS may request (title bar, taskbar, desktop shortcut).
+    # Without this, Runner.rc would reference a single-size fallback and the
+    # taskbar/title bar would show the default "circle" placeholder.
+    res_icon = os.path.join(os.getcwd(), 'res', 'icon.ico')
+    flutter_app_icon = os.path.join(os.getcwd(), 'flutter', 'windows', 'runner', 'resources', 'app_icon.ico')
+    if os.path.isfile(res_icon):
+        shutil.copy2(res_icon, flutter_app_icon)
     os.chdir('flutter')
     system2('flutter build windows --release')
     os.chdir('..')
