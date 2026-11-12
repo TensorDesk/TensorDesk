@@ -223,7 +223,49 @@ fn verify_os_password(username: &str, password: &str) -> bool {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(windows)]
+fn verify_os_password(username: &str, password: &str) -> bool {
+    use windows::{
+        core::{HSTRING, PCWSTR},
+        Win32::{
+            Foundation::{CloseHandle, HANDLE},
+            Security::{LogonUserW, LOGON32_LOGON_NETWORK, LOGON32_PROVIDER_DEFAULT},
+        },
+    };
+
+    let (domain, user) = match username.split_once('\\') {
+        Some((domain, user)) => (domain, user),
+        None => ("", username),
+    };
+    let user = HSTRING::from(user);
+    let domain = HSTRING::from(domain);
+    let domain_ptr = PCWSTR(domain.as_ptr());
+    let password = HSTRING::from(password);
+    let mut token = HANDLE::default();
+    let ok = unsafe {
+        LogonUserW(
+            &user,
+            if domain.is_empty() {
+                None
+            } else {
+                Some(&domain_ptr)
+            },
+            &password,
+            LOGON32_LOGON_NETWORK,
+            LOGON32_PROVIDER_DEFAULT,
+            &mut token,
+        )
+        .is_ok()
+    };
+    if ok {
+        unsafe {
+            let _ = CloseHandle(token);
+        }
+    }
+    ok
+}
+
+#[cfg(not(any(target_os = "linux", windows)))]
 fn verify_os_password(_username: &str, _password: &str) -> bool {
     false
 }
