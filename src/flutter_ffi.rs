@@ -1184,6 +1184,10 @@ pub fn main_get_license() -> String {
     get_license()
 }
 
+pub fn main_report_crash(kind: String, message: String, backtrace: String) {
+    crate::crash_report::report(&kind, &message, &backtrace);
+}
+
 pub fn main_get_version() -> String {
     get_version()
 }
@@ -1894,6 +1898,7 @@ pub fn cm_get_clients_length() -> usize {
 
 pub fn main_init(app_dir: String, custom_client_config: String) {
     initialize(&app_dir, &custom_client_config);
+    crate::crash_report::install();
     crate::keyboard::shortcuts::reload_from_config();
 }
 

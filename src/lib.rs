@@ -71,6 +71,9 @@ mod hbbs_http;
 
 mod tenant_bootstrap;
 
+#[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
+mod crash_report;
+
 #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
 pub mod clipboard_file;
 

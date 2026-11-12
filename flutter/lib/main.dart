@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
@@ -124,10 +125,40 @@ Future<void> initEnv(String appType) async {
   // for convenience, use global FFI on mobile platform
   // focus on multi-ffi on desktop first
   await initGlobalFFI();
+  _installCrashReporting(appType);
   // await Firebase.initializeApp();
   _registerEventHandler();
   // Update the system theme.
   updateSystemWindowTheme();
+}
+
+void _installCrashReporting(String appType) {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    _reportCrash(
+      'flutter_error',
+      details.exceptionAsString(),
+      details.stack?.toString() ?? '',
+      appType,
+    );
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('unhandled error: $error\n$stack');
+    _reportCrash('flutter_error', error.toString(), stack.toString(), appType);
+    return true;
+  };
+}
+
+void _reportCrash(String kind, String message, String backtrace, String appType) {
+  try {
+    unawaited(bind.mainReportCrash(
+      kind: kind,
+      message: message,
+      backtrace: '[$appType] $backtrace',
+    ));
+  } catch (e) {
+    debugPrint('crash report failed: $e');
+  }
 }
 
 void runMainApp(bool startService) async {

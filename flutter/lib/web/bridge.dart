@@ -889,6 +889,14 @@ class RustdeskImpl {
     return Future(() => '');
   }
 
+  Future<void> mainReportCrash(
+      {required String kind,
+      required String message,
+      required String backtrace,
+      dynamic hint}) {
+    return Future.value();
+  }
+
   Future<String> mainGetVersion({dynamic hint}) {
     return Future(() => js.context.callMethod('getByName', ['version']));
   }
