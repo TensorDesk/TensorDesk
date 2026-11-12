@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -439,7 +440,16 @@ class _DesktopTabState extends State<DesktopTab>
 
   @override
   void onWindowClose() async {
-    mainWindowClose() async => await windowManager.hide();
+    mainWindowClose() async {
+      // The tray icon that can restore this window only exists when the app is
+      // installed as a service. Without it, hiding the window leaves an
+      // invisible process that keeps the IPC pipe occupied, so every later
+      // launch fails to reach the server and exits.
+      if (!bind.mainIsInstalled()) {
+        exit(0);
+      }
+      await windowManager.hide();
+    }
     notMainWindowClose(WindowController windowController) async {
       if (controller.length != 0) {
         debugPrint("close not empty multiwindow from taskbar");

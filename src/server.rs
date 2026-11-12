@@ -685,8 +685,13 @@ pub async fn start_server(is_server: bool, no_server: bool) {
                 if crate::is_server() {
                     log::error!("ipc is occupied by another process, try kill it");
                     std::thread::spawn(stop_main_window_process).join().ok();
+                    std::process::exit(-1);
                 }
-                std::process::exit(-1);
+                // A UI process has already become the server above, so exiting
+                // here only made the window vanish with no visible error when
+                // the pipe was held by a stale instance. Stay alive and record
+                // the failure; the process still serves remote sessions.
+                log::error!("ipc pipe is unavailable, continuing without ipc");
             }
         });
         // Warm the DRM availability cache before any client connects, so the first connection does
