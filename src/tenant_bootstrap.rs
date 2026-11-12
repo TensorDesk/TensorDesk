@@ -14,6 +14,14 @@ use serde_json::Value;
 const REFRESH_INTERVAL: Duration = Duration::from_secs(6 * 3600);
 const DEFAULT_API_BASE: &str = "https://api.tensordesk.org";
 
+#[cfg(not(target_os = "ios"))]
+fn restart_rendezvous() {
+    crate::rendezvous_mediator::RendezvousMediator::restart();
+}
+
+#[cfg(target_os = "ios")]
+fn restart_rendezvous() {}
+
 /// Periodic control-plane bootstrap for managed builds: keeps the local
 /// rendezvous/relay/key config in sync with what the tenant's pool resolves
 /// to, so nodes can be rescheduled without touching clients. Failures keep
@@ -53,7 +61,7 @@ async fn refresh() -> ResultType<()> {
     }
     let body: Value = response.json().await?;
     if apply_config(&body) {
-        crate::rendezvous_mediator::RendezvousMediator::restart();
+        restart_rendezvous();
     }
     Config::set_option(
         keys::OPTION_BOOTSTRAP_FETCHED_AT.to_owned(),
@@ -99,5 +107,5 @@ fn deactivate() {
     ] {
         Config::set_option(option.to_owned(), String::new());
     }
-    crate::rendezvous_mediator::RendezvousMediator::restart();
+    restart_rendezvous();
 }
