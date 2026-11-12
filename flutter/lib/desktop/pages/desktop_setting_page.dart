@@ -2864,10 +2864,11 @@ class _AboutState extends State<_About> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Copyright © 2026 TensorDesk Tech Ltd.\n$license',
-                            style: const TextStyle(color: Colors.white),
-                          ),
+                          if (license.isNotEmpty)
+                            Text(
+                              license,
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           Text(
                             translate('Slogan_tip'),
                             style: TextStyle(
