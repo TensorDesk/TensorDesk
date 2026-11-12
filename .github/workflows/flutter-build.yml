@@ -1936,6 +1936,8 @@ jobs:
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
             --volume "/opt/artifacts:/opt/artifacts"
+            --env "TENSORDESK_MANAGED_CLIENT=${{ env.TENSORDESK_MANAGED_CLIENT }}"
+            --env "TENSORDESK_HIDE_SERVER_SETTINGS=${{ env.TENSORDESK_HIDE_SERVER_SETTINGS }}"
           shell: /bin/bash
           install: |
             apt-get update -y
@@ -2258,6 +2260,8 @@ jobs:
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
             --volume "/opt/artifacts:/opt/artifacts"
+            --env "TENSORDESK_MANAGED_CLIENT=${{ env.TENSORDESK_MANAGED_CLIENT }}"
+            --env "TENSORDESK_HIDE_SERVER_SETTINGS=${{ env.TENSORDESK_HIDE_SERVER_SETTINGS }}"
           shell: /bin/bash
           install: |
             apt-get update -y
@@ -2549,6 +2553,8 @@ jobs:
             ls -l "${PWD}"
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
+            --env "TENSORDESK_MANAGED_CLIENT=${{ env.TENSORDESK_MANAGED_CLIENT }}"
+            --env "TENSORDESK_HIDE_SERVER_SETTINGS=${{ env.TENSORDESK_HIDE_SERVER_SETTINGS }}"
           shell: /bin/bash
           install: |
             apt-get update
@@ -2825,6 +2831,8 @@ jobs:
             ls -l "${PWD}"
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
+            --env "TENSORDESK_MANAGED_CLIENT=${{ env.TENSORDESK_MANAGED_CLIENT }}"
+            --env "TENSORDESK_HIDE_SERVER_SETTINGS=${{ env.TENSORDESK_HIDE_SERVER_SETTINGS }}"
           shell: /bin/bash
           install: |
             apt-get update -y
