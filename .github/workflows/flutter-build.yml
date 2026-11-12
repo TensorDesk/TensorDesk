@@ -1971,7 +1971,8 @@ jobs:
                unzip \
                wget \
                xz-utils \
-               libssl-dev
+               libssl-dev \
+               libpam0g-dev
             # we have libopus compiled by us.
             apt-get remove -y libopus-dev || true
             # output devs
@@ -2292,7 +2293,8 @@ jobs:
                unzip \
                wget \
                xz-utils \
-               libssl-dev
+               libssl-dev \
+               libpam0g-dev
             # we have libopus compiled by us.
             apt-get remove -y libopus-dev || true
             # output devs
