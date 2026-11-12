@@ -84,16 +84,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildLeftPane(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
     final isOutgoingOnly = bind.isOutgoingOnly();
-    if (bind.isCustomClient() && !isIncomingOnly && !isOutgoingOnly) {
+    if (!isIncomingOnly && !isOutgoingOnly) {
       return buildTenantLeftPane(context);
     }
     final children = <Widget>[
       if (!isOutgoingOnly) buildPresetPasswordWarning(),
-      if (bind.isCustomClient())
-        Align(
-          alignment: Alignment.center,
-          child: loadPowered(context),
-        ),
       Align(
         alignment: Alignment.center,
         child: loadLogo(),
@@ -101,7 +96,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
-      if (bind.isCustomClient() && !isIncomingOnly) buildDeviceList(context),
       FutureBuilder<Widget>(
         future: Future.value(
             Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
@@ -364,7 +358,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   buildRightPane(BuildContext context, bool showGenericRight) {
-    if (bind.isCustomClient() && !bind.isIncomingOnly() && !bind.isOutgoingOnly()) {
+    if (!bind.isIncomingOnly() && !bind.isOutgoingOnly()) {
       // Branded TensorDesk build: the workspace device list lives on the
       // right pane. We pass `showActivation = true` so an unactivated build
       // still surfaces the activation entry rather than an empty right side.

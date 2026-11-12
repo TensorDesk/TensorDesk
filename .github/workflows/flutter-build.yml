@@ -59,7 +59,6 @@ env:
   # Managed TensorDesk client: hide the raw ID/relay/API server fields; server
   # settings are pulled from the control plane via the activation code.
   TENSORDESK_HIDE_SERVER_SETTINGS: "1"
-  TENSORDESK_MANAGED_CLIENT: "1"
 
 jobs:
   validate-update-metadata-keys:
@@ -1936,7 +1935,6 @@ jobs:
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
             --volume "/opt/artifacts:/opt/artifacts"
-            --env "TENSORDESK_MANAGED_CLIENT=${{ env.TENSORDESK_MANAGED_CLIENT }}"
             --env "TENSORDESK_HIDE_SERVER_SETTINGS=${{ env.TENSORDESK_HIDE_SERVER_SETTINGS }}"
           shell: /bin/bash
           install: |
@@ -2260,7 +2258,6 @@ jobs:
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
             --volume "/opt/artifacts:/opt/artifacts"
-            --env "TENSORDESK_MANAGED_CLIENT=${{ env.TENSORDESK_MANAGED_CLIENT }}"
             --env "TENSORDESK_HIDE_SERVER_SETTINGS=${{ env.TENSORDESK_HIDE_SERVER_SETTINGS }}"
           shell: /bin/bash
           install: |
@@ -2553,7 +2550,6 @@ jobs:
             ls -l "${PWD}"
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
-            --env "TENSORDESK_MANAGED_CLIENT=${{ env.TENSORDESK_MANAGED_CLIENT }}"
             --env "TENSORDESK_HIDE_SERVER_SETTINGS=${{ env.TENSORDESK_HIDE_SERVER_SETTINGS }}"
           shell: /bin/bash
           install: |
@@ -2831,7 +2827,6 @@ jobs:
             ls -l "${PWD}"
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
-            --env "TENSORDESK_MANAGED_CLIENT=${{ env.TENSORDESK_MANAGED_CLIENT }}"
             --env "TENSORDESK_HIDE_SERVER_SETTINGS=${{ env.TENSORDESK_HIDE_SERVER_SETTINGS }}"
           shell: /bin/bash
           install: |

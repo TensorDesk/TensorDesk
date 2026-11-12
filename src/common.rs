@@ -2707,14 +2707,9 @@ pub fn apply_managed_defaults() {
 
 #[inline]
 pub fn is_custom_client() -> bool {
-    if option_env!("TENSORDESK_MANAGED_CLIENT").is_some() {
-        return true;
-    }
-    #[cfg(windows)]
-    if crate::platform::windows::get_license_from_exe_name().is_ok() {
-        return true;
-    }
-    false
+    // TensorDesk is always a managed client: the stock RustDesk home page and
+    // its compile-time/env switches are gone.
+    true
 }
 
 #[inline]
