@@ -3861,7 +3861,9 @@ impl LoginConfigHandler {
         } else {
             Bytes::new()
         };
-        let os_login: MessageField<OSLogin> = if self.conn_type == ConnType::TERMINAL {
+        let os_login: MessageField<OSLogin> = if self.conn_type == ConnType::TERMINAL
+            || !os_username.is_empty()
+        {
             Some(OSLogin {
                 username: os_username,
                 password: os_password,
@@ -4706,10 +4708,17 @@ pub async fn handle_hash(
             return false;
         }
     }
+    // OS-account authentication asks for the remote system credentials instead
+    // of a RustDesk password, so a saved RustDesk password must not be sent.
+    let force_os_auth = crate::get_builtin_option(keys::OPTION_FORCE_OS_AUTH) == "Y";
     // last password
-    let mut password = lc.read().unwrap().password.clone();
+    let mut password = if force_os_auth {
+        Vec::new()
+    } else {
+        lc.read().unwrap().password.clone()
+    };
     // preset password
-    if password.is_empty() {
+    if !force_os_auth && password.is_empty() {
         if !password_preset.is_empty() {
             let mut hasher = Sha256::new();
             hasher.update(password_preset);
@@ -4723,7 +4732,7 @@ pub async fn handle_hash(
     // Currently it's used only when click shared ab peer card
     let shared_password = lc.write().unwrap().shared_password.take();
     if let Some(shared_password) = shared_password {
-        if !shared_password.is_empty() {
+        if !force_os_auth && !shared_password.is_empty() {
             let mut hasher = Sha256::new();
             hasher.update(shared_password.clone());
             hasher.update(&hash.salt);
@@ -4733,18 +4742,18 @@ pub async fn handle_hash(
         }
     }
     // peer config password
-    if password.is_empty() {
+    if !force_os_auth && password.is_empty() {
         password = lc.read().unwrap().config.password.clone();
         if !password.is_empty() {
             lc.write().unwrap().password_source = Default::default();
         }
     }
     // personal ab password
-    if password.is_empty() {
+    if !force_os_auth && password.is_empty() {
         try_get_password_from_personal_ab(lc.clone(), &mut password);
     }
 
-    if password.is_empty() {
+    if !force_os_auth && password.is_empty() {
         let p = crate::ui_interface::get_builtin_option(keys::OPTION_DEFAULT_CONNECT_PASSWORD);
         if !p.is_empty() {
             let mut hasher = Sha256::new();
@@ -4770,6 +4779,14 @@ pub async fn handle_hash(
         return true;
     }
 
+    if force_os_auth {
+        // The credentials are entered in the dialog below; sending an empty
+        // login first would surface a wrong-password error before the user can
+        // type anything.
+        lc.write().unwrap().hash = hash;
+        interface.msgbox("input-password", "Password Required", "", "");
+        return true;
+    }
     let password = if password.is_empty() {
         // login without password, the remote side can click accept
         interface.msgbox("input-password", "Password Required", "", "");

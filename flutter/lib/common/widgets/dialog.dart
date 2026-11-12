@@ -905,7 +905,11 @@ void wrongPasswordDialog(SessionID sessionId,
     }
 
     submit() {
-      enterPasswordDialog(sessionId, dialogManager);
+      if (bind.mainGetOptionSync(key: kOptionForceOsAuth) == 'Y') {
+        enterUserLoginDialog(sessionId, dialogManager, 'remote-os-auth-tip');
+      } else {
+        enterPasswordDialog(sessionId, dialogManager);
+      }
     }
 
     return CustomAlertDialog(

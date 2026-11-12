@@ -852,5 +852,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("This device is activated.", "此裝置已啟用。"),
         ("This device is not activated yet.", "此裝置尚未啟用。"),
         ("Desktops", "桌面"),
+        ("remote-os-auth-tip", "使用遠端裝置的系統帳號與密碼登入"),
     ].iter().cloned().collect();
 }

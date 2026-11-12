@@ -121,48 +121,89 @@ fn verify_os_password(username: &str, password: &str) -> bool {
         appdata_ptr: *mut libc::c_void,
     }
 
+    #[repr(C)]
+    struct PamMessage {
+        msg_style: libc::c_int,
+        msg: *const libc::c_char,
+    }
+
+    #[repr(C)]
+    struct PamResponse {
+        resp: *mut libc::c_char,
+        resp_retcode: libc::c_int,
+    }
+
+    struct ConvData {
+        username: *const libc::c_char,
+        password: *const libc::c_char,
+    }
+
     unsafe extern "C" fn pam_conv_cb(
         num_msg: libc::c_int,
         msg: *mut *mut libc::c_void,
         resp_out: *mut *mut libc::c_void,
         appdata: *mut libc::c_void,
     ) -> libc::c_int {
-        use libc::{malloc, strdup};
-        if num_msg <= 0 || msg.is_null() {
-            return 0;
+        use libc::{calloc, free, strdup};
+        const PAM_PROMPT_ECHO_ON: libc::c_int = 1;
+        const PAM_PROMPT_ECHO_OFF: libc::c_int = 2;
+        const PAM_SUCCESS: libc::c_int = 0;
+        const PAM_BUF_ERR: libc::c_int = 5;
+        const PAM_CONV_ERR: libc::c_int = 19;
+        if num_msg <= 0 || msg.is_null() || resp_out.is_null() || appdata.is_null() {
+            return PAM_CONV_ERR;
         }
-        let pw_c = appdata as *const libc::c_char;
-        for i in 0..num_msg {
-            let m = *(msg as *mut *mut libc::c_void).add(i as usize);
+        let data = &*(appdata as *const ConvData);
+        let responses =
+            calloc(num_msg as usize, std::mem::size_of::<PamResponse>()) as *mut PamResponse;
+        if responses.is_null() {
+            return PAM_BUF_ERR;
+        }
+        for i in 0..num_msg as usize {
+            let m = *(msg as *mut *const PamMessage).add(i);
             if m.is_null() {
                 continue;
             }
-            let typ = *(m as *const libc::c_int);
-            if typ == 2 {
-                // PAM_PROMPT_ECHO_OFF
-                let dup = strdup(pw_c);
-                if dup.is_null() {
-                    return 4;
-                } // PAM_BUF_ERR
-                let resp_ptr =
-                    malloc(std::mem::size_of::<*mut libc::c_void>() * 2) as *mut libc::c_void;
-                if resp_ptr.is_null() {
-                    return 4;
+            let answer = match (*m).msg_style {
+                PAM_PROMPT_ECHO_OFF => data.password,
+                // pam_unix prompts for the password with ECHO_ON on some distros.
+                PAM_PROMPT_ECHO_ON => {
+                    let is_user_prompt = !(*m).msg.is_null() && {
+                        let text = std::ffi::CStr::from_ptr((*m).msg)
+                            .to_string_lossy()
+                            .to_ascii_lowercase();
+                        text.contains("login") || text.contains("user") || text.contains("name")
+                    };
+                    if is_user_prompt {
+                        data.username
+                    } else {
+                        data.password
+                    }
                 }
-                (*(resp_ptr as *mut *mut libc::c_char)) = dup as *mut libc::c_char;
-                *(resp_ptr as *mut libc::c_int).add(1) = 0;
-                *(resp_out as *mut *mut libc::c_void) = resp_ptr;
-                return 0;
+                _ => ptr::null(),
+            };
+            if !answer.is_null() {
+                let dup = strdup(answer);
+                if dup.is_null() {
+                    free(responses as *mut libc::c_void);
+                    return PAM_BUF_ERR;
+                }
+                (*responses.add(i)).resp = dup;
             }
+            (*responses.add(i)).resp_retcode = 0;
         }
-        *(resp_out as *mut *mut libc::c_void) = ptr::null_mut();
-        0
+        *resp_out = responses as *mut libc::c_void;
+        PAM_SUCCESS
     }
 
     let mut pamh: *mut libc::c_void = ptr::null_mut();
+    let mut conv_data = ConvData {
+        username: user.as_ptr(),
+        password: pw.as_ptr(),
+    };
     let mut conv_struct = PamConv {
         prompt: pam_conv_cb,
-        appdata_ptr: pw.as_ptr() as *mut libc::c_void,
+        appdata_ptr: &mut conv_data as *mut _ as *mut libc::c_void,
     };
 
     unsafe {
@@ -2745,15 +2786,16 @@ impl Connection {
         if force_os_auth {
             let username = self.lr.os_login.username.clone();
             let password = self.lr.os_login.password.clone();
-            if !username.is_empty() && !password.is_empty() {
-                let ok = tokio::task::spawn_blocking(move || verify_os_password(&username, &password))
-                    .await
-                    .unwrap_or(false);
-                if ok {
-                    self.set_conn_audit_primary_auth(ConnAuditPrimaryAuth::OsUserPassword);
-                    return true;
-                }
+            if username.is_empty() || password.is_empty() {
+                return false;
             }
+            let ok = tokio::task::spawn_blocking(move || verify_os_password(&username, &password))
+                .await
+                .unwrap_or(false);
+            if ok {
+                self.set_conn_audit_primary_auth(ConnAuditPrimaryAuth::OsUserPassword);
+            }
+            return ok;
         }
         if password::temporary_enabled() {
             let password = password::temporary_password();

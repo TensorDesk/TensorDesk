@@ -293,5 +293,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("android-logs-folder-tip", "Choose Android → media to store log files."),
         ("Use an activation code", ""),
         ("Please close the current remote desktop first", ""),
+        ("remote-os-auth-tip", "Log in with the remote device's system account and password"),
     ].iter().cloned().collect();
 }

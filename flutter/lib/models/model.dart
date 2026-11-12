@@ -931,8 +931,7 @@ class FfiModel with ChangeNotifier {
     } else if (type == 'input-password') {
       final forceOs = bind.mainGetOptionSync(key: kOptionForceOsAuth) == 'Y';
       if (forceOs) {
-        enterUserLoginAndPasswordDialog(
-            sessionId, dialogManager, 'remote-os-auth-tip');
+        enterUserLoginDialog(sessionId, dialogManager, 'remote-os-auth-tip');
       } else {
         enterPasswordDialog(sessionId, dialogManager);
       }
