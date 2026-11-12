@@ -2066,6 +2066,30 @@ Future<bool> restoreWindowPosition(WindowType type,
         // See https://github.com/rustdesk/rustdesk/blob/9b9276e7524523d7f667fefcd0694d981443df0e/flutter/macos/Runner/Base.lproj/MainMenu.xib#L333
         // If `<windowPositionMask>` in `<window>` is not set, the window will be centered.
         break;
+      case WindowType.RemoteDesktop:
+      case WindowType.ViewCamera:
+        // Adaptive default size for first session window launch.
+        // Platform runners fall back to a hard-coded 800x600 otherwise, which
+        // looks tiny on high-DPI screens and large on small ones.
+        try {
+          final screens = await window_size.getScreenList();
+          if (screens.isNotEmpty) {
+            final screen = screens.first;
+            final frame = screen.visibleFrame;
+            final scale = kIgnoreDpi ? 1.0 : screen.scaleFactor;
+            final w = (frame.width / scale * 0.8).clamp(480.0, 1920.0);
+            final h = (frame.height / scale * 0.75).clamp(320.0, 1200.0);
+            final wc = WindowController.fromWindowId(windowId!);
+            await wc.setSize(Size(w, h),
+                ignoreDevicePixelRatio: _ignoreDevicePixelRatio);
+            await wc.center();
+            debugPrint(
+                "Adaptive default size for $type: ${w.toStringAsFixed(0)}x${h.toStringAsFixed(0)}");
+          }
+        } catch (e) {
+          debugPrint("Adaptive default size failed: $e");
+        }
+        break;
       default:
         // No need to change the position of a sub window if no position is saved,
         // since the default position is already centered.
