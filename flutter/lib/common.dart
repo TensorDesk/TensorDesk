@@ -2494,7 +2494,16 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
           return;
         }
         final result = await activateTenant(code, username: username);
-        showToast(translate(result.ok ? 'Successful' : 'Failed'));
+        if (result.ok) {
+          showToast(translate('Successful'));
+        } else {
+          // The deep link has no dialog of its own, so open the activation
+          // dialog to show the detailed reason (and the upgrade link when
+          // the failure is a quota issue).
+          showActivationDialog(gFFI.dialogManager, () {},
+              initialCode: code, initialUsername: username);
+          showToast('${translate('Failed')}: ${result.message}');
+        }
       });
     }
     return null;
@@ -3702,11 +3711,24 @@ Future<bool> setServerConfig(
 const kTenantApiBase = String.fromEnvironment(
     'TENSORDESK_API_BASE', defaultValue: 'https://api.tensordesk.org');
 
+enum TenantActivationError {
+  none,
+  network,
+  invalidToken,
+  notMember,
+  idTaken,
+  quotaExceeded,
+  incomingQuotaExceeded,
+  unknown,
+}
+
 class TenantActivationResult {
   final bool ok;
   final String message;
+  final TenantActivationError kind;
 
-  const TenantActivationResult(this.ok, this.message);
+  const TenantActivationResult(this.ok, this.message,
+      {this.kind = TenantActivationError.none});
 }
 
 /// Pulls the server configuration for this tenant from the control plane and
@@ -3729,15 +3751,33 @@ Future<TenantActivationResult> activateTenant(String token,
       ? kTenantApiBase.substring(0, kTenantApiBase.length - 1)
       : kTenantApiBase;
   String responseMessage(http.Response response) {
-    var message = response.body;
     try {
       final decoded = jsonDecode(response.body);
-      if (decoded is Map && decoded['message'] != null) {
-        message = decoded['message'].toString();
+      if (decoded is Map) {
+        // The API returns {"error": ..., "code": ...}; older endpoints used
+        // "message". Fall back to the raw body only when neither is present.
+        final msg = decoded['error'] ?? decoded['message'];
+        if (msg != null) return msg.toString();
       }
     } catch (_) {}
-    return message;
+    return response.body;
   }
+
+  String responseCode(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['code'] != null) {
+        return decoded['code'].toString();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  TenantActivationResult invalidTokenResult() => TenantActivationResult(
+      false,
+      translate(
+          'Invalid or revoked activation code. Get a new one from the console.'),
+      kind: TenantActivationError.invalidToken);
 
   try {
     // Validate the code with bootstrap first: it does not consume the td1_,
@@ -3752,7 +3792,11 @@ Future<TenantActivationResult> activateTenant(String token,
       rust: true,
     );
     if (response.statusCode != 200) {
-      return TenantActivationResult(false, responseMessage(response));
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return invalidTokenResult();
+      }
+      return TenantActivationResult(false, responseMessage(response),
+          kind: TenantActivationError.unknown);
     }
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final host = (data['host'] ?? '').toString().trim();
@@ -3784,12 +3828,40 @@ Future<TenantActivationResult> activateTenant(String token,
       rust: true,
     );
     if (enrollResponse.statusCode != 200) {
-      var message = responseMessage(enrollResponse);
+      final message = responseMessage(enrollResponse);
+      final code = responseCode(enrollResponse);
       if (message.contains('INCOMING_QUOTA_EXCEEDED')) {
-        message = translate(
-            'Incoming device quota exceeded. Set this device to outgoing-only in Settings to activate without consuming incoming quota.');
+        return TenantActivationResult(
+            false,
+            translate(
+                'Incoming device limit reached. Set this device to outgoing-only in Settings, or upgrade your plan.'),
+            kind: TenantActivationError.incomingQuotaExceeded);
       }
-      return TenantActivationResult(false, message);
+      if (message.contains('quota exceeded')) {
+        return TenantActivationResult(
+            false,
+            translate(
+                'Device limit reached for your plan. Upgrade to add more devices.'),
+            kind: TenantActivationError.quotaExceeded);
+      }
+      if (code == 'USERNAME_NOT_MEMBER') {
+        return TenantActivationResult(
+            false,
+            translate(
+                'This email is not a member of the workspace. Ask your admin to invite you.'),
+            kind: TenantActivationError.notMember);
+      }
+      if (message.contains('already used')) {
+        return TenantActivationResult(
+            false,
+            translate('Device ID conflict. Restart the app and try again.'),
+            kind: TenantActivationError.idTaken);
+      }
+      if (enrollResponse.statusCode == 401) {
+        return invalidTokenResult();
+      }
+      return TenantActivationResult(false, message,
+          kind: TenantActivationError.unknown);
     }
     final enrollData = jsonDecode(enrollResponse.body) as Map<String, dynamic>;
     final credential = (enrollData['token'] ?? '').toString().trim();
@@ -3814,10 +3886,18 @@ Future<TenantActivationResult> activateTenant(String token,
     final message = e.toString();
     if (e is TimeoutException ||
         message.contains('timed out') ||
-        message.contains('TimedOut')) {
-      return TenantActivationResult(false, translate('Network error'));
+        message.contains('TimedOut') ||
+        message.contains('SocketException') ||
+        message.contains('Connection refused') ||
+        message.contains('Connection reset')) {
+      return TenantActivationResult(
+          false,
+          translate(
+              'Cannot connect to the server. Check your network and try again.'),
+          kind: TenantActivationError.network);
     }
-    return TenantActivationResult(false, message);
+    return TenantActivationResult(false, message,
+        kind: TenantActivationError.unknown);
   }
 }
 

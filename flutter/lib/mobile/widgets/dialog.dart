@@ -5,6 +5,7 @@ import 'package:flutter_hbb/common/widgets/api_server_warning.dart';
 import 'package:flutter_hbb/common/widgets/setting_widgets.dart';
 import 'package:flutter_hbb/common/widgets/toolbar.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../common.dart';
 import '../../models/platform_model.dart';
@@ -228,6 +229,7 @@ void showActivationDialog(OverlayDialogManager dialogManager,
   final codeController = TextEditingController(text: initialCode);
   final usernameController = TextEditingController(text: initialUsername);
   var error = '';
+  var showUpgrade = false;
   dialogManager.show((setState, close, context) {
     Future<void> submit() async {
       final username = usernameController.text.trim();
@@ -243,6 +245,7 @@ void showActivationDialog(OverlayDialogManager dialogManager,
       setState(() {
         isInProgress = true;
         error = '';
+        showUpgrade = false;
       });
       final result = await activateTenant(code, username: username);
       setState(() {
@@ -254,7 +257,12 @@ void showActivationDialog(OverlayDialogManager dialogManager,
         showToast(translate('Successful'));
       } else {
         // Stay on the activation page so the account email can be corrected.
-        setState(() => error = result.message);
+        setState(() {
+          error = result.message;
+          showUpgrade =
+              result.kind == TenantActivationError.quotaExceeded ||
+                  result.kind == TenantActivationError.incomingQuotaExceeded;
+        });
         showToast('${translate('Failed')}: ${result.message}');
       }
     }
@@ -294,6 +302,16 @@ void showActivationDialog(OverlayDialogManager dialogManager,
                 child: Text(
                   error,
                   style: const TextStyle(color: Colors.redAccent),
+                ),
+              ),
+            if (showUpgrade)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: TextButton.icon(
+                  onPressed: () => launchUrlString(
+                      'https://console.tensordesk.org/billing'),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: Text(translate('Upgrade plan')),
                 ),
               ),
             if (isInProgress)

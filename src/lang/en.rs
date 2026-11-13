@@ -294,6 +294,12 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Use an activation code", ""),
         ("Please close the current remote desktop first", ""),
         ("remote-os-auth-tip", "Log in with the remote device's system account and password"),
-        ("Incoming device quota exceeded. Set this device to outgoing-only in Settings to activate without consuming incoming quota.", ""),
+        ("Incoming device limit reached. Set this device to outgoing-only in Settings, or upgrade your plan.", ""),
+        ("Invalid or revoked activation code. Get a new one from the console.", ""),
+        ("Cannot connect to the server. Check your network and try again.", ""),
+        ("This email is not a member of the workspace. Ask your admin to invite you.", ""),
+        ("Device limit reached for your plan. Upgrade to add more devices.", ""),
+        ("Device ID conflict. Restart the app and try again.", ""),
+        ("Upgrade plan", ""),
     ].iter().cloned().collect();
 }

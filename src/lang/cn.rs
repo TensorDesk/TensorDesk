@@ -854,6 +854,12 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Desktops", "桌面"),
         ("remote-os-auth-tip", "使用远端设备的系统账号和密码登录"),
         ("Workspace", "工作区"),
-        ("Incoming device quota exceeded. Set this device to outgoing-only in Settings to activate without consuming incoming quota.", "被控设备数已达上限。请在设置中将本设备改为仅主控模式后再激活，不占用被控配额。"),
+        ("Incoming device limit reached. Set this device to outgoing-only in Settings, or upgrade your plan.", "被控设备数量已达套餐上限。可在设置中将本设备改为「仅主控」，或升级套餐。"),
+        ("Invalid or revoked activation code. Get a new one from the console.", "激活码无效或已被撤销，请在控制台重新获取。"),
+        ("Cannot connect to the server. Check your network and try again.", "无法连接到服务器，请检查网络后重试。"),
+        ("This email is not a member of the workspace. Ask your admin to invite you.", "该邮箱不是此工作区的成员，请联系管理员邀请加入。"),
+        ("Device limit reached for your plan. Upgrade to add more devices.", "设备数量已达套餐上限，请升级套餐以添加更多设备。"),
+        ("Device ID conflict. Restart the app and try again.", "设备 ID 冲突，请重启应用后重试。"),
+        ("Upgrade plan", "升级套餐"),
     ].iter().cloned().collect();
 }
