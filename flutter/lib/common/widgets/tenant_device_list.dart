@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
@@ -31,34 +33,64 @@ class TenantDeviceList extends StatefulWidget {
   State<TenantDeviceList> createState() => _TenantDeviceListState();
 }
 
-class _TenantDeviceListState extends State<TenantDeviceList> {
+class _TenantDeviceListState extends State<TenantDeviceList>
+    with WidgetsBindingObserver {
   List<TenantDevice>? _devices;
   String? _error;
   bool _loading = false;
+  Timer? _refreshTimer;
+
+  /// Devices report a heartbeat every 15 s, so polling at the same cadence
+  /// keeps the online dots close to reality without extra load.
+  static const _refreshInterval = Duration(seconds: 15);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+    _refreshTimer =
+        Timer.periodic(_refreshInterval, (_) => _load(silent: true));
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load(silent: true);
+    }
+  }
+
+  Future<void> _load({bool silent = false}) async {
     if (_loading) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    _loading = true;
+    if (!silent) {
+      setState(() {
+        _error = null;
+      });
+    }
     try {
       final devices = await fetchTenantDevices();
       if (!mounted) return;
       setState(() {
         _devices = devices;
+        _error = null;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        // Keep the last known list on a failed background poll; only a
+        // user-initiated load surfaces the failure.
+        if (!silent) {
+          _error = e.toString();
+        }
         _loading = false;
       });
     }

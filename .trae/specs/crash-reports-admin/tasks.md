@@ -1,0 +1,34 @@
+# Tasks
+
+- [x] Task 1: 客户端上报补全与进程内限频
+  - [x] SubTask 1.1: `src/crash_report.rs` 新增 `os_version()`（`hbb_common::sysinfo::System` 的 `distribution_id` / `long_os_version` / `kernel_version`，空值按可用部分拼接）
+  - [x] SubTask 1.2: 新增 `log_tail()`：`Config::log_path()` 下取最新文件末尾 `8 * 1024` 字节，`from_utf8_lossy`
+  - [x] SubTask 1.3: `send()` 的 JSON body 增加 `os_version` / `arch`（`std::env::consts::ARCH`）/ `log_tail`，沿用 3s 超时与失败仅 `warn`
+  - [x] SubTask 1.4: 新增进程内限频 `allowed(kind, message)`：相同 `(kind, message)` 60s 内只发一次；每进程 10 分钟内最多 10 条；panic hook 与 `report()` 均先经过该函数，超限 `log::trace!` 后跳过
+  - [x] SubTask 1.5: `cargo check --features flutter,linux-pkg-config`；验证 `os_version`/`log_tail` 非空，连续调用 `report()` 只产生一条上报
+- [x] Task 2: 管理端后端接口与数据模型
+  - [x] SubTask 2.1: 新增 `backend/migrations/20260101000027_crash_report_context.sql`：`ALTER TABLE crash_reports ADD COLUMN os_version TEXT, ADD COLUMN arch TEXT, ADD COLUMN log_tail TEXT CHECK (log_tail IS NULL OR char_length(log_tail) <= 16000);`
+  - [x] SubTask 2.2: `backend/src/routes/client.rs` 的 `CrashReportRequest` 增加 `os_version` / `arch` / `log_tail`；`report_crash` 增加长度校验（128 / 32 / 16000），INSERT 增加 3 列
+  - [x] SubTask 2.3: `report_crash` 入口增加 Redis 固定窗口限频：`INCR` + `EXPIRE`，key=`crash:rl:{device_id 或 user_id}`，10 分钟 10 次，超限 `AppError::too_many`；Redis 错误 fail-open 并告警
+  - [x] SubTask 2.4: 新增 `backend/src/routes/crash_reports.rs`：`CrashReportListQuery`、`CrashReportRow`、`CrashReportDetailRow`、`list_crash_reports`、`get_crash_report`；使用 `rbac::require(&admin, AdminPermission::ReadCrashReports)`
+  - [x] SubTask 2.5: `backend/src/routes/mod.rs` 增加 `mod crash_reports;` 与 `GET /admin/crash-reports`、`GET /admin/crash-reports/{id}`
+  - [x] SubTask 2.6: `backend/src/auth/rbac.rs` 增加 `ReadCrashReports` 到 enum、`ALL`（27）、`ops` 与 `support` 的 `matches!`；补测试断言
+  - [x] SubTask 2.7: `cargo check --all-targets` + `cargo test`
+- [x] Task 3: 管理端前端页面
+  - [x] SubTask 3.1: `src/api/types.ts` 增加 `CrashReportKind`、`CrashReport`、`CrashReportDetail`
+  - [x] SubTask 3.2: `src/api/client.ts` 增加 `adminListCrashReports`、`adminGetCrashReport`
+  - [x] SubTask 3.3: 新增 `src/pages/admin/CrashReportsPage.tsx`：筛选（类型、工作区）、分页表格、详情 Drawer（元信息 / message / backtrace / log_tail，`Typography.Text copyable`）
+  - [x] SubTask 3.4: `src/router.tsx` 增加 `/admin/crash-reports` 路由（`AdminLayout`）
+  - [x] SubTask 3.5: `src/layouts/AdminLayout.tsx` 在 `nav.groupUsability` 增加崩溃报告入口（`WarningOutlined`）
+  - [x] SubTask 3.6: 10 个 `src/i18n/locales/*.ts` 增加 `nav.crashReports` 与 `admin.crashReports.*`（zh-CN、en-US、zh-TW、ja、ko、de、fr、es、pt、ru）
+  - [x] SubTask 3.7: `npm run build`（tsc + vite）
+- [x] Task 4: 集成验证
+  - [x] SubTask 4.1: 重启本地 API 容器，确认迁移自动执行且 `crash_reports` 新列存在
+  - [x] SubTask 4.2: 同一设备凭据连续 `POST /api/client/crash` 11 次，确认前 10 次 204、第 11 次 429；清理 Redis key 后恢复
+  - [x] SubTask 4.3: `curl` 新旧两种请求体调用 `POST /api/client/crash`，确认均成功（新字段入库、旧请求 204）
+  - [x] SubTask 4.4: 管理端登录后验证列表过滤、分页、详情、复制；无权限角色确认 403 / 菜单不可见
+  - [x] SubTask 4.5: 回归检查 `/admin/feedback`、`/admin/issues`、`/admin/sessions` 正常
+- [x] Task 5: 提交与交付说明
+  - [x] SubTask 5.1: `tensorManage` 提交（迁移 + 后端 + 前端）
+  - [x] SubTask 5.2: `rustdesk` 提交（`src/crash_report.rs`）
+  - [x] SubTask 5.3: 报告回归面、已知限制、生产部署事项（API 镜像重建、迁移自动执行、客户端需重新构建）

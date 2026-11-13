@@ -26,7 +26,7 @@ use std::{
     cell::RefCell,
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
-    process::{Child, Command},
+    process::{Child, Command, Stdio},
     string::String,
     sync::atomic::{AtomicBool, Ordering},
     sync::Arc,
@@ -2776,6 +2776,17 @@ fn has_cmd(cmd: &str) -> bool {
 }
 
 pub fn run_cmds_privileged(cmds: &str) -> bool {
+    if Command::new("sudo")
+        .args(["-n", CMD_SH.as_str(), "-c", cmds])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|x| x.success())
+        .unwrap_or_default()
+    {
+        return true;
+    }
     crate::platform::gtk_sudo::run(vec![cmds]).is_ok()
 }
 

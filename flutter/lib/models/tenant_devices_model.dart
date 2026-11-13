@@ -37,6 +37,46 @@ class TenantDevice {
   }
 }
 
+class TenantAccount {
+  TenantAccount({
+    required this.email,
+    required this.displayName,
+    required this.workspaceId,
+    required this.workspaceName,
+    required this.plan,
+    required this.planName,
+    required this.deviceLimit,
+    required this.deviceCount,
+    this.expiresAt,
+  });
+
+  final String email;
+  final String displayName;
+  final String workspaceId;
+  final String workspaceName;
+  final String plan;
+  final String planName;
+  final int? deviceLimit;
+  final int? deviceCount;
+  final DateTime? expiresAt;
+
+  factory TenantAccount.fromJson(Map<String, dynamic> json) {
+    int? parseInt(dynamic value) =>
+        value is int ? value : int.tryParse('${value ?? ''}');
+    return TenantAccount(
+      email: '${json['email'] ?? ''}',
+      displayName: '${json['display_name'] ?? ''}',
+      workspaceId: '${json['workspace_id'] ?? ''}',
+      workspaceName: '${json['workspace_name'] ?? ''}',
+      plan: '${json['plan'] ?? ''}',
+      planName: '${json['plan_name'] ?? ''}',
+      deviceLimit: parseInt(json['device_limit']),
+      deviceCount: parseInt(json['device_count']),
+      expiresAt: DateTime.tryParse('${json['expires_at'] ?? ''}')?.toLocal(),
+    );
+  }
+}
+
 /// Maps the OS string reported in sysinfo (e.g. `Ubuntu / 24.04`) onto the
 /// platform names [getPlatformImage] understands; unknown values get no icon.
 String tenantPeerPlatform(String os) {
@@ -115,6 +155,33 @@ Future<Map<String, dynamic>?> fetchTenantSubscription() async {
     throw Exception('invalid subscription response');
   }
   return decoded;
+}
+
+/// Account, workspace and subscription visible to the current device credential.
+Future<TenantAccount?> fetchTenantAccount() async {
+  final proof = bind.mainGetOptionSync(key: 'tenant-proof').trim();
+  if (proof.isEmpty) {
+    return null;
+  }
+  final base = kTenantApiBase.endsWith('/')
+      ? kTenantApiBase.substring(0, kTenantApiBase.length - 1)
+      : kTenantApiBase;
+  final response = await http.get(
+    Uri.parse('$base/api/client/account'),
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $proof',
+    },
+    rust: true,
+  );
+  if (response.statusCode != 200) {
+    throw Exception('account returned HTTP ${response.statusCode}');
+  }
+  final decoded = jsonDecode(response.body);
+  if (decoded is! Map<String, dynamic>) {
+    throw Exception('invalid account response');
+  }
+  return TenantAccount.fromJson(decoded);
 }
 
 /// Renames a device of the credential's workspace; throws on HTTP error.

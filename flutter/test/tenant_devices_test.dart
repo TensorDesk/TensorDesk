@@ -38,4 +38,36 @@ void main() {
     expect(tenantPeerPlatform('Android 14'), kPeerPlatformAndroid);
     expect(tenantPeerPlatform('FreeBSD 14'), '');
   });
+
+  test('parses account, workspace and subscription details', () {
+    final account = TenantAccount.fromJson({
+      'email': 'member@example.com',
+      'display_name': 'Member',
+      'workspace_id': 'w1',
+      'workspace_name': 'Engineering',
+      'plan': 'pro',
+      'plan_name': 'Professional',
+      'device_limit': 10,
+      'device_count': 3,
+      'expires_at': '2027-01-01T00:00:00Z',
+    });
+    expect(account.email, 'member@example.com');
+    expect(account.displayName, 'Member');
+    expect(account.workspaceName, 'Engineering');
+    expect(account.planName, 'Professional');
+    expect(account.deviceLimit, 10);
+    expect(account.deviceCount, 3);
+    expect(account.expiresAt?.isUtc, isFalse);
+  });
+
+  test('keeps account usable when optional fields are missing', () {
+    final account = TenantAccount.fromJson({'plan': 'free'});
+    expect(account.email, '');
+    expect(account.displayName, '');
+    expect(account.workspaceName, '');
+    expect(account.plan, 'free');
+    expect(account.deviceLimit, isNull);
+    expect(account.deviceCount, isNull);
+    expect(account.expiresAt, isNull);
+  });
 }

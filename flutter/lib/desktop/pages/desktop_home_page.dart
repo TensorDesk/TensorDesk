@@ -898,6 +898,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await start_service_by_role_once();
       if (!isWeb && await bind.mainIsUsingPublicServer()) {
         if (bind.mainGetBuildinOption(key: kOptionHideServerSetting) == 'Y') {
           showActivationDialog(gFFI.dialogManager, () => setState(() {}));

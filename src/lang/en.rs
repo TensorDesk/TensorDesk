@@ -294,5 +294,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Use an activation code", ""),
         ("Please close the current remote desktop first", ""),
         ("remote-os-auth-tip", "Log in with the remote device's system account and password"),
+        ("Incoming device quota exceeded. Set this device to outgoing-only in Settings to activate without consuming incoming quota.", ""),
     ].iter().cloned().collect();
 }

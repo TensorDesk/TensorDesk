@@ -3176,7 +3176,19 @@ Future<void> start_service(bool is_start) async {
       !isMacOS ||
       await callMainCheckSuperUserPermission();
   if (checked) {
-    mainSetBoolOption(kOptionStopService, !is_start);
+    await mainSetBoolOption(kOptionStopService, !is_start);
+  }
+}
+
+Future<void> start_service_by_role_once() async {
+  const migratedKey = 'role-service-default-v1';
+  if (isWeb || bind.isOutgoingOnly()) return;
+  if (bind.mainGetLocalOption(key: migratedKey) == 'Y') return;
+  if (await mainGetBoolOption(kOptionStopService)) {
+    await start_service(true);
+  }
+  if (!await mainGetBoolOption(kOptionStopService)) {
+    await bind.mainSetLocalOption(key: migratedKey, value: 'Y');
   }
 }
 
@@ -3763,11 +3775,21 @@ Future<TenantActivationResult> activateTenant(String token,
         'uuid': await bind.mainGetUuid(),
         'pk': await bind.mainGetPk(),
         'username': username,
+        'conn_type': bind.isIncomingOnly()
+            ? 'incoming'
+            : bind.isOutgoingOnly()
+                ? 'outgoing'
+                : 'both',
       }),
       rust: true,
     );
     if (enrollResponse.statusCode != 200) {
-      return TenantActivationResult(false, responseMessage(enrollResponse));
+      var message = responseMessage(enrollResponse);
+      if (message.contains('INCOMING_QUOTA_EXCEEDED')) {
+        message = translate(
+            'Incoming device quota exceeded. Set this device to outgoing-only in Settings to activate without consuming incoming quota.');
+      }
+      return TenantActivationResult(false, message);
     }
     final enrollData = jsonDecode(enrollResponse.body) as Map<String, dynamic>;
     final credential = (enrollData['token'] ?? '').toString().trim();

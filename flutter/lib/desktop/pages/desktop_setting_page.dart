@@ -2464,21 +2464,21 @@ class _Account extends StatefulWidget {
 }
 
 class _AccountState extends State<_Account> {
-  Map<String, dynamic>? _subscription;
+  TenantAccount? _account;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadSubscription();
+    _loadAccount();
   }
 
-  Future<void> _loadSubscription() async {
+  Future<void> _loadAccount() async {
     try {
-      final data = await fetchTenantSubscription();
+      final data = await fetchTenantAccount();
       if (mounted) {
         setState(() {
-          _subscription = data;
+          _account = data;
           _error = null;
         });
       }
@@ -2517,18 +2517,23 @@ class _AccountState extends State<_Account> {
   }
 
   Widget accountInfo(BuildContext context, String email) {
-    final subscription = _subscription;
-    final planName = (subscription?['plan_name'] ??
-            subscription?['plan'] ??
-            'Free')
-        .toString();
-    final expiresAt = DateTime.tryParse(
-        '${subscription?['expires_at'] ?? ''}')?.toLocal();
-    final expires = expiresAt == null
+    final account = _account;
+    final planName = account == null
         ? '—'
-        : expiresAt.toIso8601String().substring(0, 10);
-    final deviceLimit = subscription?['device_limit'];
-    final deviceCount = subscription?['device_count'];
+        : account.planName.isNotEmpty
+            ? account.planName
+            : account.plan.isNotEmpty
+                ? account.plan
+                : '—';
+    final expiresAt = account?.expiresAt;
+    final expires =
+        expiresAt == null ? '—' : expiresAt.toIso8601String().substring(0, 10);
+    final deviceLimit = account?.deviceLimit;
+    final deviceCount = account?.deviceCount;
+    final sameAccount = account != null &&
+        email.isNotEmpty &&
+        account.email.toLowerCase() == email.toLowerCase();
+    final displayName = sameAccount ? account.displayName : '';
 
     Widget row(String label, String value) => Padding(
           padding: const EdgeInsets.symmetric(
@@ -2552,12 +2557,15 @@ class _AccountState extends State<_Account> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (displayName.isNotEmpty) row(translate('Display Name'), displayName),
         row(translate('Account email'),
             email.isEmpty ? translate('Unknown') : email),
+        if (account != null && account.workspaceName.isNotEmpty)
+          row(translate('Workspace'), account.workspaceName),
         row(translate('Plan'), planName),
         row(translate('Expires'), expires),
         if (deviceLimit != null)
-          row(translate('Devices'), '$deviceCount / $deviceLimit'),
+          row(translate('Devices'), '${deviceCount ?? '—'} / $deviceLimit'),
         if (_error != null)
           Padding(
             padding: const EdgeInsets.only(

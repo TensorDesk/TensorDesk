@@ -1031,6 +1031,13 @@ pub fn main_get_http_status(url: String) -> Option<String> {
 }
 
 pub fn main_get_option(key: String) -> String {
+    #[cfg(target_os = "linux")]
+    let value = if key == "stop-service" {
+        config::Config::get_option(&key)
+    } else {
+        get_option(&key)
+    };
+    #[cfg(not(target_os = "linux"))]
     let value = get_option(&key);
     if value.is_empty() {
         crate::get_builtin_option(&key)

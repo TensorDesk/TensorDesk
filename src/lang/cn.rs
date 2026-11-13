@@ -853,5 +853,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("This device is not activated yet.", "此设备尚未激活。"),
         ("Desktops", "桌面"),
         ("remote-os-auth-tip", "使用远端设备的系统账号和密码登录"),
+        ("Workspace", "工作区"),
+        ("Incoming device quota exceeded. Set this device to outgoing-only in Settings to activate without consuming incoming quota.", "被控设备数已达上限。请在设置中将本设备改为仅主控模式后再激活，不占用被控配额。"),
     ].iter().cloned().collect();
 }

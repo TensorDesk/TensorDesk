@@ -853,5 +853,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("This device is not activated yet.", ""),
         ("Desktops", ""),
         ("remote-os-auth-tip", ""),
+        ("Workspace", ""),
+        ("Incoming device quota exceeded. Set this device to outgoing-only in Settings to activate without consuming incoming quota.", ""),
     ].iter().cloned().collect();
 }
