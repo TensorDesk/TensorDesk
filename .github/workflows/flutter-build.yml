@@ -2586,7 +2586,8 @@ jobs:
                wget \
                xz-utils \
                zip \
-               libssl-dev
+               libssl-dev \
+               libpam0g-dev
             # arm-linux needs CMake and vcokg built from source as there
             # are no prebuilts available from Kitware and Microsoft
             if [ "${{ matrix.job.vcpkg-triplet }}" = "arm-linux" ]; then
