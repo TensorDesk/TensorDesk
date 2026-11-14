@@ -2754,8 +2754,9 @@ jobs:
           sudo appimage-builder --skip-tests --recipe ./AppImageBuilder-${{ matrix.job.arch }}.yml
           cmp AppDir/AppRun appimage-build/AppRun/v2.0.0/AppRun-Release-${{ matrix.job.arch }}
           # appimage-builder names the output after the recipe's app id; publish as tensordesk-*.
+          # It runs under sudo, so the generated file is owned by root; rename it as root.
           for name in rustdesk-*.AppImage; do
-            mv "$name" "tensordesk${name#rustdesk}"
+            sudo mv "$name" "tensordesk${name#rustdesk}"
           done
 
       - name: Publish appimage package
