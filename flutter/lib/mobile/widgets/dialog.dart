@@ -222,6 +222,16 @@ void showServerSettingsWithValue(
   });
 }
 
+void showTenantNotice(OverlayDialogManager dialogManager, String message) {
+  dialogManager.show((setState, close, context) {
+    return CustomAlertDialog(
+      title: Text(translate('Activate TensorDesk')),
+      content: Text(message),
+      actions: [dialogButton('OK', onPressed: close)],
+    );
+  });
+}
+
 void showActivationDialog(OverlayDialogManager dialogManager,
     VoidCallback onActivated,
     {String initialCode = '', String initialUsername = ''}) {
@@ -254,7 +264,11 @@ void showActivationDialog(OverlayDialogManager dialogManager,
       if (result.ok) {
         close();
         onActivated.call();
-        showToast(translate('Successful'));
+        if (result.notice.isEmpty) {
+          showToast(translate('Successful'));
+        } else {
+          showTenantNotice(dialogManager, result.notice);
+        }
       } else {
         // Stay on the activation page so the account email can be corrected.
         setState(() {
@@ -295,6 +309,20 @@ void showActivationDialog(OverlayDialogManager dialogManager,
                 border: const OutlineInputBorder(),
               ),
               onSubmitted: (_) => submit(),
+            ),
+            Wrap(
+              spacing: 4,
+              children: [
+                TextButton(
+                  onPressed: () =>
+                      launchUrlString('$kTenantConsoleBase/register'),
+                  child: Text(translate('Register')),
+                ),
+                TextButton(
+                  onPressed: () => launchUrlString('$kTenantConsoleBase/login'),
+                  child: Text(translate('Login')),
+                ),
+              ],
             ),
             if (error.isNotEmpty)
               Padding(

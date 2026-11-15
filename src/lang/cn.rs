@@ -861,5 +861,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Device limit reached for your plan. Upgrade to add more devices.", "设备数量已达套餐上限，请升级套餐以添加更多设备。"),
         ("Device ID conflict. Restart the app and try again.", "设备 ID 冲突，请重启应用后重试。"),
         ("Upgrade plan", "升级套餐"),
+        ("Register", "注册"),
+        ("Incoming device limit reached. This device is now controller-only; restart TensorDesk to apply.", "被控设备数量已达套餐上限，本设备已激活为仅主控；重启 TensorDesk 后生效。"),
     ].iter().cloned().collect();
 }

@@ -2495,7 +2495,11 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
         }
         final result = await activateTenant(code, username: username);
         if (result.ok) {
-          showToast(translate('Successful'));
+          if (result.notice.isEmpty) {
+            showToast(translate('Successful'));
+          } else {
+            showTenantNotice(gFFI.dialogManager, result.notice);
+          }
         } else {
           // The deep link has no dialog of its own, so open the activation
           // dialog to show the detailed reason (and the upgrade link when
@@ -3711,6 +3715,9 @@ Future<bool> setServerConfig(
 const kTenantApiBase = String.fromEnvironment(
     'TENSORDESK_API_BASE', defaultValue: 'https://api.tensordesk.org');
 
+/// Web console (account registration, sign-in and billing).
+const kTenantConsoleBase = 'https://console.tensordesk.org';
+
 enum TenantActivationError {
   none,
   network,
@@ -3727,8 +3734,12 @@ class TenantActivationResult {
   final String message;
   final TenantActivationError kind;
 
+  /// Set on success when activation had to change a device setting; the UI
+  /// shows it as a notice instead of the plain success toast.
+  final String notice;
+
   const TenantActivationResult(this.ok, this.message,
-      {this.kind = TenantActivationError.none});
+      {this.kind = TenantActivationError.none, this.notice = ''});
 }
 
 /// Pulls the server configuration for this tenant from the control plane and
@@ -3807,26 +3818,39 @@ Future<TenantActivationResult> activateTenant(String token,
     if (host.isEmpty || key.isEmpty) {
       return const TenantActivationResult(false, 'invalid bootstrap response');
     }
-    final enrollResponse = await http.post(
-      Uri.parse('$base/api/client/enroll'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'id': await bind.mainGetMyId(),
-        'uuid': await bind.mainGetUuid(),
-        'pk': await bind.mainGetPk(),
-        'username': username,
-        'conn_type': bind.isIncomingOnly()
-            ? 'incoming'
-            : bind.isOutgoingOnly()
-                ? 'outgoing'
-                : 'both',
-      }),
-      rust: true,
-    );
+    Future<http.Response> enroll(String connType) async => http.post(
+          Uri.parse('$base/api/client/enroll'),
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'id': await bind.mainGetMyId(),
+            'uuid': await bind.mainGetUuid(),
+            'pk': await bind.mainGetPk(),
+            'username': username,
+            'conn_type': connType,
+          }),
+          rust: true,
+        );
+    final currentConnType = bind.isIncomingOnly()
+        ? 'incoming'
+        : bind.isOutgoingOnly()
+            ? 'outgoing'
+            : 'both';
+    var enrollResponse = await enroll(currentConnType);
+    var activatedAsControllerOnly = false;
+    // The incoming bucket can be full while the plan still allows devices that
+    // only control others. The server rejects before consuming the one-time
+    // code, so enroll again in the outgoing bucket instead of failing.
+    if (enrollResponse.statusCode != 200 &&
+        currentConnType != 'outgoing' &&
+        !isOptionFixed('conn-type') &&
+        responseMessage(enrollResponse).contains('INCOMING_QUOTA_EXCEEDED')) {
+      enrollResponse = await enroll('outgoing');
+      activatedAsControllerOnly = enrollResponse.statusCode == 200;
+    }
     if (enrollResponse.statusCode != 200) {
       final message = responseMessage(enrollResponse);
       final code = responseCode(enrollResponse);
@@ -3873,6 +3897,9 @@ Future<TenantActivationResult> activateTenant(String token,
     await bind.mainSetOption(key: 'tenant-id', value: tenantId);
     await bind.mainSetOption(key: 'tenant-proof', value: credential);
     await bind.mainSetOption(key: 'tenant-username', value: username);
+    if (activatedAsControllerOnly) {
+      await bind.mainSetOption(key: 'conn-type', value: 'outgoing');
+    }
     final ok = await setServerConfig(
         null,
         null,
@@ -3881,7 +3908,11 @@ Future<TenantActivationResult> activateTenant(String token,
     if (!ok) {
       return const TenantActivationResult(false, 'failed to save server config');
     }
-    return const TenantActivationResult(true, '');
+    return TenantActivationResult(true, '',
+        notice: activatedAsControllerOnly
+            ? translate(
+                'Incoming device limit reached. This device is now controller-only; restart TensorDesk to apply.')
+            : '');
   } catch (e) {
     final message = e.toString();
     if (e is TimeoutException ||
